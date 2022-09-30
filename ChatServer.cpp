@@ -32,7 +32,7 @@ ChatServer::ChatServer()
 
 ChatServer::~ChatServer()
 {
-	
+	ReleaseSector();
 
 }
 
@@ -69,6 +69,7 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 
 	FindUser(session_id, &user);
 
+	unsigned int acc = user->account_no;
 
 	user->last_recv_time = GetTickCount64();
 

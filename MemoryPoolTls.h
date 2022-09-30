@@ -27,9 +27,10 @@ class MemoryPoolTls
 	{
 	public:
 
-		POOL(int _default_size, bool _placement_new)
+		POOL(int _init_size, int _default_size, bool _placement_new)
 		{
-			size = default_size = _default_size;
+			size = _init_size;
+			default_size = _default_size;
 			placement_new = _placement_new;
 
 
@@ -202,8 +203,8 @@ public:
 		if (td == nullptr)
 		{
 			td = new THREAD_DATA;
-			td->pool = new POOL(default_size, placement_new);
-			td->chunk = new POOL(default_size, placement_new);
+			td->pool = new POOL(default_size, default_size, placement_new);
+			td->chunk = new POOL(0, default_size, placement_new);
 			TlsSetValue(tls_index, (LPVOID)td);
 		}
 
@@ -247,8 +248,8 @@ public:
 		if (td == nullptr)
 		{
 			td = new THREAD_DATA;
-			td->pool = new POOL(default_size, placement_new);
-			td->chunk = new POOL(default_size, placement_new);
+			td->pool = new POOL(default_size, default_size, placement_new);
+			td->chunk = new POOL(0, default_size, placement_new);
 			TlsSetValue(tls_index, (LPVOID)td);
 		}
 		int size = default_size;
@@ -293,4 +294,5 @@ private:
 	alignas(64) int tls_index;
 	bool placement_new;
 	int default_size;
+	int a = 0;
 };

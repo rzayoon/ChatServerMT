@@ -31,11 +31,10 @@ void UnlockSectorAround(SectorAround* sector_around);
 
 
 void InitSector();
-void LockSectorExclusive(unsigned short y, unsigned short x);
-void UnlockSectorExclusive(unsigned short y, unsigned short x);
-void LockSectorShared(unsigned short y, unsigned short x);
-void UnlockSectorShared(unsigned short y, unsigned short x);
+void ReleaseSector();
+void LockSector(unsigned short y, unsigned short x);
+void UnlockSector(unsigned short y, unsigned short x);
 
 
 extern list<User*> g_SectorList[SECTOR_MAX_Y][SECTOR_MAX_X];
-extern SRWLOCK g_SectorLock[SECTOR_MAX_Y][SECTOR_MAX_X];
+extern CRITICAL_SECTION g_SectorLock[SECTOR_MAX_Y][SECTOR_MAX_X];

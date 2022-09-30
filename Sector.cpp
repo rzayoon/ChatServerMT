@@ -6,16 +6,16 @@
 
 
 list<User*> g_SectorList[SECTOR_MAX_Y][SECTOR_MAX_X];
-SRWLOCK g_SectorLock[SECTOR_MAX_Y][SECTOR_MAX_X];
+CRITICAL_SECTION g_SectorLock[SECTOR_MAX_Y][SECTOR_MAX_X];
 
 
 void Sector_AddUser(User* user)
 {
 	unsigned short sector_y(user->sector_y), sector_x(user->sector_x);
 
-	LockSectorExclusive(sector_y, sector_x);
+	LockSector(sector_y, sector_x);
 	g_SectorList[sector_y][sector_x].push_back(user);
-	UnlockSectorExclusive(sector_y, sector_x);
+	UnlockSector(sector_y, sector_x);
 
 	return;
 }
@@ -25,7 +25,7 @@ void Sector_RemoveUser(User* user)
 	int sector_y = user->sector_y;
 	int sector_x = user->sector_x;
 
-	LockSectorExclusive(sector_y, sector_x);
+	LockSector(sector_y, sector_x);
 	list<User*>& sector = g_SectorList[sector_y][sector_x];
 
 	for (auto iter = sector.begin(); iter != sector.end(); ++iter)
@@ -38,7 +38,7 @@ void Sector_RemoveUser(User* user)
 
 
 	}
-	UnlockSectorExclusive(sector_y, sector_x);
+	UnlockSector(sector_y, sector_x);
 
 
 	return;
@@ -81,7 +81,7 @@ void LockSectorAround(SectorAround* sector_around)
 {
 	for (int cnt = 0; cnt < sector_around->count; cnt++)
 	{
-		LockSectorShared(sector_around->around[cnt].y, sector_around->around[cnt].x);
+		LockSector(sector_around->around[cnt].y, sector_around->around[cnt].x);
 	}
 
 	return;
@@ -91,7 +91,7 @@ void UnlockSectorAround(SectorAround* sector_around)
 {
 	for (int cnt = 0; cnt < sector_around->count; cnt++)
 	{
-		UnlockSectorShared(sector_around->around[cnt].y, sector_around->around[cnt].x);
+		UnlockSector(sector_around->around[cnt].y, sector_around->around[cnt].x);
 	}
 
 	return;
@@ -101,31 +101,29 @@ void InitSector()
 {
 	for (int i = 0; i < SECTOR_MAX_Y; i++)
 		for (int j = 0; j < SECTOR_MAX_X; j++)
-			InitializeSRWLock(&g_SectorLock[i][j]);
+			InitializeCriticalSection(&g_SectorLock[i][j]);
 
 	return;
 }
 
-void LockSectorExclusive(unsigned short y, unsigned short x)
+void ReleaseSector()
 {
-	AcquireSRWLockExclusive(&g_SectorLock[y][x]);
+	for (int i = 0; i < SECTOR_MAX_Y; i++)
+		for (int j = 0; j < SECTOR_MAX_X; j++)
+			DeleteCriticalSection(&g_SectorLock[i][j]);
+
 	return;
 }
 
-void UnlockSectorExclusive(unsigned short y, unsigned short x)
+void LockSector(unsigned short y, unsigned short x)
 {
-	ReleaseSRWLockExclusive(&g_SectorLock[y][x]);
+	EnterCriticalSection(&g_SectorLock[y][x]);
 	return;
 }
 
-void LockSectorShared(unsigned short y, unsigned short x)
+void UnlockSector(unsigned short y, unsigned short x)
 {
-	AcquireSRWLockShared(&g_SectorLock[y][x]);
+	LeaveCriticalSection(&g_SectorLock[y][x]);
 	return;
 }
 
-void UnlockSectorShared(unsigned short y, unsigned short x)
-{
-	ReleaseSRWLockShared(&g_SectorLock[y][x]);
-	return;
-}

@@ -12,7 +12,7 @@
 #include "ProcPacket.h"
 #include "Sector.h"
 
-MemoryPoolTls<User> g_UserPool(500, true);
+MemoryPoolTls<User> g_UserPool(300, true);
 
 unordered_map<SS_ID, User*> g_UserMap;
 SRWLOCK g_UserMapSRW;
