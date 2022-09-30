@@ -1,0 +1,41 @@
+#pragma once
+#include <list>
+using std::list;
+
+#include "User.h"
+
+#define SECTOR_MAX_X 50
+#define SECTOR_MAX_Y 50
+
+
+struct SectorPos
+{
+	DWORD x;
+	DWORD y;
+};
+
+struct SectorAround
+{
+	int count;
+	SectorPos around[9];
+
+};
+
+void Sector_AddUser(User* user);
+
+void Sector_RemoveUser(User* user);
+
+void GetSectorAround(int sector_x, int sector_y, SectorAround* sector_around);
+void LockSectorAround(SectorAround* sector_around);
+void UnlockSectorAround(SectorAround* sector_around);
+
+
+void InitSector();
+void LockSectorExclusive(unsigned short y, unsigned short x);
+void UnlockSectorExclusive(unsigned short y, unsigned short x);
+void LockSectorShared(unsigned short y, unsigned short x);
+void UnlockSectorShared(unsigned short y, unsigned short x);
+
+
+extern list<User*> g_SectorList[SECTOR_MAX_Y][SECTOR_MAX_X];
+extern SRWLOCK g_SectorLock[SECTOR_MAX_Y][SECTOR_MAX_X];
