@@ -9,7 +9,7 @@
 #include "ProcPacket.h"
 #include "Sector.h"
 #include "ObjectPool.h"
-
+#include "CrashDump.h"
 
 ChatServer g_server;
 
@@ -67,7 +67,10 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 	(*packet) >> packet_type;
 	User* user;
 
-	FindUser(session_id, &user);
+	DWORD t = GetTickCount64();
+
+	if (!AcquireUser(session_id, &user))
+		CrashDump::Crash();
 
 	unsigned int acc = user->account_no;
 
@@ -112,6 +115,8 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 
 	if (!result_proc) 
 		g_server.DisconnectSession(user->session_id);
+
+	ReleaseUser(user);
 
 	return;
 }

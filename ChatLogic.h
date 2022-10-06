@@ -14,7 +14,9 @@ extern unsigned int g_login_cnt;
 
 extern Tracer g_Tracer;
 
-bool FindUser(SS_ID s_id, User** user);
+bool AcquireUser(SS_ID s_id, User** user);
+void ReleaseUser(User* user);
+
 void CreateUser(SS_ID s_id);
 void DeleteUser(SS_ID s_id);
 

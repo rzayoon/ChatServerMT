@@ -544,7 +544,7 @@ bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 	Session* session = &session_arr[idx];
 
 	InterlockedIncrement((LONG*)&session->io_count);
-	if (session->release_flag == 0)
+	if (session->release_flag == 0 && !session->disconnect)
 	{
 		if (session->session_id == id)
 		{
@@ -598,8 +598,7 @@ inline void CNetServer::DisconnectSession(unsigned long long session_id)
 	{
 		if (session->session_id == id)
 		{
-			session->disconnect = true;
-			CancelIoEx((HANDLE)session->sock, NULL);
+			Disconnect(session);
 		}
 	}
 	UpdateIOCount(session);
@@ -609,7 +608,8 @@ inline void CNetServer::DisconnectSession(unsigned long long session_id)
 
 inline void CNetServer::Disconnect(Session* session)
 {
-	session->disconnect = true;
+
+	InterlockedExchange((LONG*)&session->disconnect, true);
 	CancelIoEx((HANDLE)session->sock, NULL);
 
 	return;

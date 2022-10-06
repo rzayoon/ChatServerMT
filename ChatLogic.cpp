@@ -11,8 +11,9 @@
 #include "CommonProtocol.h"
 #include "ProcPacket.h"
 #include "Sector.h"
+#include "CrashDump.h"
 
-MemoryPoolTls<User> g_UserPool(300, true);
+MemoryPoolTls<User> g_UserPool(300);
 
 unordered_map<SS_ID, User*> g_UserMap;
 SRWLOCK g_UserMapSRW;
@@ -22,7 +23,7 @@ alignas(64) unsigned int g_login_cnt;
 
 Tracer g_Tracer;
 
-bool FindUser(SS_ID s_id, User** user)
+bool AcquireUser(SS_ID s_id, User** user)
 {
 	bool ret = true;
 
@@ -33,11 +34,20 @@ bool FindUser(SS_ID s_id, User** user)
 		ReleaseSRWLockShared(&g_UserMapSRW);
 		return false;
 	}
+	*user = iter->second;
+	(*user)->Lock();
+
 	ReleaseSRWLockShared(&g_UserMapSRW);
 
-	*user = iter->second;
 
 	return true;
+}
+
+void ReleaseUser(User* user)
+{
+	user->Unlock();
+
+	return;
 }
 
 // accept thread에서 호출
@@ -45,7 +55,11 @@ void CreateUser(SS_ID s_id)
 {
 	User* user = g_UserPool.Alloc();
 
+	user->Lock();
+
 	user->session_id = s_id;
+	user->sector_x = -1;
+	user->sector_y = -1;
 	user->last_recv_time = GetTickCount64();
 
 	
@@ -56,8 +70,11 @@ void CreateUser(SS_ID s_id)
 	g_UserMap[s_id] = user;
 	ReleaseSRWLockExclusive(&g_UserMapSRW);
 
+	user->Unlock();
+
 	InterlockedIncrement(&g_connect_cnt);
 
+	return;
 }
 
 //Release한 스레드에서 호출
@@ -65,27 +82,42 @@ void DeleteUser(SS_ID s_id)
 {
 	User* user;
 
-	if (!FindUser(s_id, &user))
-	{
-		g_Tracer.trace(3, (PVOID)s_id);
-		return;
-	}
+	AcquireSRWLockExclusive(&g_UserMapSRW);
+	auto iter = g_UserMap.find(s_id);
+	if (iter == g_UserMap.end())
+		CrashDump::Crash();
+	user = iter->second;
+
+	user->Lock();
+
+	g_UserMap.erase(s_id);
+	ReleaseSRWLockExclusive(&g_UserMapSRW);
+
 
 	if (user->is_in_sector)
 	{
 		Sector_RemoveUser(user);
+		user->is_in_sector = false;
 	}
 
-	AcquireSRWLockExclusive(&g_UserMapSRW);
-	g_UserMap.erase(s_id);
-	ReleaseSRWLockExclusive(&g_UserMapSRW);
+	user->sector_x = SECTOR_MAX_X;
+	user->sector_y = SECTOR_MAX_Y;
+
+
 
 	g_Tracer.trace(2, user);
 
-	if (user->is_login)
+	if (user->is_login) {
 		InterlockedDecrement(&g_login_cnt);
+		user->is_login = false;
+	}
 	else
 		InterlockedDecrement(&g_connect_cnt);
+
+	user->session_id = -1;
+	user->account_no = -1;
+
+	ReleaseUser(user);
 
 	g_UserPool.Free(user);
 
@@ -95,12 +127,7 @@ void DeleteUser(SS_ID s_id)
 
 void SendMessageUni(CPacket* packet, User* user)
 {
-	//User* user;
-	//if (!FindUser(sid, &user))
-	//{
-
-	//	return;
-	//}
+	// user lock?
 
 	g_server.SendPacket(user->session_id, packet);
 

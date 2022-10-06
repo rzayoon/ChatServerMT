@@ -154,7 +154,6 @@
     <ClCompile Include="CNetServer.cpp" />
     <ClCompile Include="CPacket.cpp" />
     <ClCompile Include="CrashDump.cpp" />
-    <ClCompile Include="JOB.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MakePacket.cpp" />
     <ClCompile Include="monitor.cpp" />

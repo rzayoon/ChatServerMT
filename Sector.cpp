@@ -11,17 +11,25 @@ CRITICAL_SECTION g_SectorLock[SECTOR_MAX_Y][SECTOR_MAX_X];
 
 void Sector_AddUser(User* user)
 {
+	if (user->is_in_sector)
+		return;
+
 	unsigned short sector_y(user->sector_y), sector_x(user->sector_x);
 
 	LockSector(sector_y, sector_x);
 	g_SectorList[sector_y][sector_x].push_back(user);
 	UnlockSector(sector_y, sector_x);
 
+	user->is_in_sector = true;
+
 	return;
 }
 
 void Sector_RemoveUser(User* user)
 {
+	if (!user->is_in_sector)
+		return;
+
 	int sector_y = user->sector_y;
 	int sector_x = user->sector_x;
 
@@ -40,6 +48,7 @@ void Sector_RemoveUser(User* user)
 	}
 	UnlockSector(sector_y, sector_x);
 
+	user->is_in_sector = false;
 
 	return;
 }

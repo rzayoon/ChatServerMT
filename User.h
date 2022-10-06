@@ -1,4 +1,5 @@
 #pragma once
+#include <Windows.h>
 
 typedef unsigned long long SS_ID;
 
@@ -18,6 +19,19 @@ public:
 		return last_recv_time;
 	}
 
+	void Lock()
+	{
+		EnterCriticalSection(&cs);
+		return;
+	}
+
+	void Unlock()
+	{
+		LeaveCriticalSection(&cs);
+		return;
+	}
+
+
 	bool is_login;
 	bool is_in_sector;
 
@@ -31,6 +45,9 @@ public:
 	unsigned short sector_y;
 
 	unsigned long long last_recv_time;
+
+	CRITICAL_SECTION cs;
+
 
 
 };

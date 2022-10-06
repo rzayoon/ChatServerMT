@@ -46,7 +46,9 @@ bool ProcChatLogin(User* user, CPacket* packet)
 	AcquireSRWLockShared(&g_UserMapSRW);
 	for (auto& iter : g_UserMap)
 	{
+		DWORD time = GetTickCount64();
 		User* temp_user = iter.second;
+		user->Lock();
 		if (temp_user->account_no == account_no)
 		{
 			// 다른 세션 id에서 account no 중복 로그인
@@ -67,6 +69,7 @@ bool ProcChatLogin(User* user, CPacket* packet)
 
 			return false;
 		}
+		user->Unlock();
 	}
 	ReleaseSRWLockShared(&g_UserMapSRW);
 
@@ -103,21 +106,24 @@ bool ProcChatSectorMove(User* user, CPacket* packet)
 		return false;
 	}
 
+	SectorAround sect_around;
+	sect_around.count = 0;
+	// 데드락 확인 필요
+
 	if (sector_x < 0 || sector_x >= SECTOR_MAX_X || sector_y < 0 || sector_y >= SECTOR_MAX_Y)
 	{
 		return false;
 	}
 
-	if (user->is_in_sector == true)
-	{
-		Sector_RemoveUser(user);
-	}
-	
+
+	Sector_RemoveUser(user);
+
+	// 이 사이에 다른 채팅 못 받을 수 있음
+
 	user->sector_x = sector_x; 
 	user->sector_y = sector_y;
 
 	Sector_AddUser(user);
-	user->is_in_sector = true;
 
 	CPacket* send_packet = CPacket::Alloc();
 
