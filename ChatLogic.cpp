@@ -13,7 +13,7 @@
 #include "Sector.h"
 #include "CrashDump.h"
 
-MemoryPoolTls<User> g_UserPool(300);
+MemoryPoolTls<User> g_UserPool(1000);
 
 unordered_map<SS_ID, User*> g_UserMap;
 SRWLOCK g_UserMapSRW;
