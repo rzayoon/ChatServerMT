@@ -173,7 +173,6 @@
     <ClInclude Include="CommonProtocol.h" />
     <ClInclude Include="CPacket.h" />
     <ClInclude Include="CrashDump.h" />
-    <ClInclude Include="JOB.h" />
     <ClInclude Include="LockFreePool.h" />
     <ClInclude Include="LockFreeQueue.h" />
     <ClInclude Include="LockFreeStack.h" />

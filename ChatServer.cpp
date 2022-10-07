@@ -14,6 +14,8 @@
 ChatServer g_server;
 
 
+extern unordered_map<SS_ID, User*> g_UserMap[dfUSER_MAP_HASH];
+extern CRITICAL_SECTION g_UserMapCS[dfUSER_MAP_HASH];
 
 // session key -> account no 중복 검사 시 순회 필요 ( login )
 // account no key -> ?? session key 중복 검사?? join - leave 시 검색해서 찾아야 함.
@@ -23,7 +25,8 @@ ChatServer g_server;
 ChatServer::ChatServer()
 {
 	//m_hSingleThread = (HANDLE)_beginthreadex(nullptr, 0, SingleUpdate, nullptr, 0, nullptr);
-	InitializeSRWLock(&g_UserMapSRW);
+	for(int i = 0; i < dfUSER_MAP_HASH; i++)
+		InitializeCriticalSection(&g_UserMapCS[i]);
 
 	InitSector();
 
@@ -32,6 +35,8 @@ ChatServer::ChatServer()
 
 ChatServer::~ChatServer()
 {
+	for (int i = 0; i < dfUSER_MAP_HASH; i++)
+		DeleteCriticalSection(&g_UserMapCS[i]);
 	ReleaseSector();
 
 }
@@ -67,12 +72,12 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 	(*packet) >> packet_type;
 	User* user;
 
-	DWORD t = GetTickCount64();
+	ULONGLONG t = GetTickCount64();
 
 	if (!AcquireUser(session_id, &user))
 		CrashDump::Crash();
 
-	unsigned int acc = user->account_no;
+	long long acc = user->account_no;
 
 	user->last_recv_time = GetTickCount64();
 

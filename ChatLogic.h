@@ -2,12 +2,13 @@
 #include <unordered_map>
 using std::unordered_map;
 
+#define dfUSER_MAP_HASH 4
+
 #include "CPacket.h"
 #include "User.h"
 #include "Tracer.h"
 
-extern unordered_map<SS_ID, User*> g_UserMap;
-extern SRWLOCK g_UserMapSRW;
+
 
 extern unsigned int g_connect_cnt;
 extern unsigned int g_login_cnt;

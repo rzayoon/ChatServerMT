@@ -15,8 +15,8 @@
 
 MemoryPoolTls<User> g_UserPool(1000);
 
-unordered_map<SS_ID, User*> g_UserMap;
-SRWLOCK g_UserMapSRW;
+unordered_map<SS_ID, User*> g_UserMap[dfUSER_MAP_HASH];
+CRITICAL_SECTION g_UserMapCS[dfUSER_MAP_HASH];
 
 alignas(64) unsigned int g_connect_cnt;
 alignas(64) unsigned int g_login_cnt;
@@ -27,17 +27,16 @@ bool AcquireUser(SS_ID s_id, User** user)
 {
 	bool ret = true;
 
-	AcquireSRWLockShared(&g_UserMapSRW);
-	auto iter = g_UserMap.find(s_id);
-	if (iter == g_UserMap.end())
-	{
-		ReleaseSRWLockShared(&g_UserMapSRW);
-		return false;
-	}
+	unsigned int idx = s_id % dfUSER_MAP_HASH;
+
+	EnterCriticalSection(&g_UserMapCS[idx]);
+	auto iter = g_UserMap[idx].find(s_id);
+	if (iter == g_UserMap[idx].end())
+		CrashDump::Crash();
 	*user = iter->second;
 	(*user)->Lock();
 
-	ReleaseSRWLockShared(&g_UserMapSRW);
+	LeaveCriticalSection(&g_UserMapCS[idx]);
 
 
 	return true;
@@ -54,6 +53,11 @@ void ReleaseUser(User* user)
 void CreateUser(SS_ID s_id)
 {
 	User* user = g_UserPool.Alloc();
+	int idx = s_id % dfUSER_MAP_HASH;
+
+
+	if (user == nullptr)
+		CrashDump::Crash();
 
 	user->Lock();
 
@@ -66,9 +70,12 @@ void CreateUser(SS_ID s_id)
 	g_Tracer.trace(1, (PVOID)user->session_id);
 
 	// Ãß°¡
-	AcquireSRWLockExclusive(&g_UserMapSRW);
-	g_UserMap[s_id] = user;
-	ReleaseSRWLockExclusive(&g_UserMapSRW);
+	EnterCriticalSection(&g_UserMapCS[idx]);
+	if (g_UserMap[idx].find(s_id) != g_UserMap[idx].end())
+		CrashDump::Crash();
+
+	g_UserMap[idx][s_id] = user;
+	LeaveCriticalSection(&g_UserMapCS[idx]);
 
 	user->Unlock();
 
@@ -81,18 +88,25 @@ void CreateUser(SS_ID s_id)
 void DeleteUser(SS_ID s_id)
 {
 	User* user;
+	int idx = s_id % dfUSER_MAP_HASH;
 
-	AcquireSRWLockExclusive(&g_UserMapSRW);
-	auto iter = g_UserMap.find(s_id);
-	if (iter == g_UserMap.end())
+
+	EnterCriticalSection(&g_UserMapCS[idx]);
+	auto iter = g_UserMap[idx].find(s_id);
+	if (iter == g_UserMap[idx].end())
 		CrashDump::Crash();
 	user = iter->second;
 
+
+	g_UserMap[idx].erase(s_id);
+	LeaveCriticalSection(&g_UserMapCS[idx]);
+
 	user->Lock();
-
-	g_UserMap.erase(s_id);
-	ReleaseSRWLockExclusive(&g_UserMapSRW);
-
+	if (user->session_id != s_id)
+	{
+		user->Unlock();
+		return;
+	}
 
 	if (user->is_in_sector)
 	{
@@ -117,7 +131,7 @@ void DeleteUser(SS_ID s_id)
 	user->session_id = -1;
 	user->account_no = -1;
 
-	ReleaseUser(user);
+	user->Unlock();
 
 	g_UserPool.Free(user);
 
@@ -136,10 +150,12 @@ void SendMessageUni(CPacket* packet, User* user)
 
 void SendMessageSector(CPacket* packet, int sector_x, int sector_y)
 {
-	auto& sector = g_SectorList[sector_y][sector_x];
+	list<User*>& sector = g_SectorList[sector_y][sector_x];
+	User* user;
 
-	for (auto& user : sector)
+	for (auto iter = sector.begin(); iter != sector.end(); ++iter)
 	{
+		user = (*iter);
 		SendMessageUni(packet, user);
 	}
 

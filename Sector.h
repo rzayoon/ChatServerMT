@@ -26,14 +26,14 @@ void Sector_AddUser(User* user);
 void Sector_RemoveUser(User* user);
 
 void GetSectorAround(int sector_x, int sector_y, SectorAround* sector_around);
-void LockSectorAround(SectorAround* sector_around);
-void UnlockSectorAround(SectorAround* sector_around);
+void LockSectorAround(const SectorAround* sector_around);
+void UnlockSectorAround(const SectorAround* sector_around);
 
 
 void InitSector();
 void ReleaseSector();
-void LockSector(unsigned short y, unsigned short x);
-void UnlockSector(unsigned short y, unsigned short x);
+void LockSector(const unsigned short y, const unsigned short x);
+void UnlockSector(const unsigned short y, const unsigned short x);
 
 
 extern list<User*> g_SectorList[SECTOR_MAX_Y][SECTOR_MAX_X];

@@ -9,7 +9,7 @@ const unsigned int Tracer::mask = 0xFFFF;
 
 
 
-void Tracer::trace(char code, PVOID session, long long value, long long value2)
+void Tracer::trace(char code, const PVOID session, const long long value, const long long value2)
 {
 	unsigned long long seq = InterlockedIncrement64(&pos);
 	unsigned int _pos = seq & mask;

@@ -86,7 +86,7 @@ void GetSectorAround(int sector_x, int sector_y, SectorAround* sector_around)
 
 }
 
-void LockSectorAround(SectorAround* sector_around)
+void LockSectorAround(const SectorAround* sector_around)
 {
 	for (int cnt = 0; cnt < sector_around->count; cnt++)
 	{
@@ -96,7 +96,7 @@ void LockSectorAround(SectorAround* sector_around)
 	return;
 }
 
-void UnlockSectorAround(SectorAround* sector_around)
+void UnlockSectorAround(const SectorAround* sector_around)
 {
 	for (int cnt = 0; cnt < sector_around->count; cnt++)
 	{
@@ -124,13 +124,13 @@ void ReleaseSector()
 	return;
 }
 
-void LockSector(unsigned short y, unsigned short x)
+void LockSector(const unsigned short y, const unsigned short x)
 {
 	EnterCriticalSection(&g_SectorLock[y][x]);
 	return;
 }
 
-void UnlockSector(unsigned short y, unsigned short x)
+void UnlockSector(const unsigned short y, const unsigned short x)
 {
 	LeaveCriticalSection(&g_SectorLock[y][x]);
 	return;

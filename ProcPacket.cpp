@@ -9,7 +9,8 @@ using std::unordered_map;
 #include "CommonProtocol.h"
 #include "CrashDump.h"
 
-
+extern unordered_map<SS_ID, User*> g_UserMap[dfUSER_MAP_HASH];
+extern CRITICAL_SECTION g_UserMapCS[dfUSER_MAP_HASH];
 
 
 bool ProcChatLogin(User* user, CPacket* packet)
@@ -17,6 +18,9 @@ bool ProcChatLogin(User* user, CPacket* packet)
 	__int64 account_no;
 	wchar_t id[MAX_ID_SIZE];
 	wchar_t nick[MAX_NICK_SIZE];
+
+	int idx = user->session_id & dfUSER_MAP_HASH;
+	bool ret = true;
 
 	(*packet) >> account_no;
 	(*packet).GetData((char*)id, MAX_ID_SIZE * sizeof(wchar_t));
@@ -40,38 +44,43 @@ bool ProcChatLogin(User* user, CPacket* packet)
 		g_server.DisconnectSession(user->session_id);
 		
 		
-		return false;
+		ret = false;
 	}
+	if (!ret) return false;
 
-	AcquireSRWLockShared(&g_UserMapSRW);
-	for (auto& iter : g_UserMap)
+	for (int iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
 	{
-		DWORD time = GetTickCount64();
-		User* temp_user = iter.second;
-		user->Lock();
-		if (temp_user->account_no == account_no)
+		EnterCriticalSection(&g_UserMapCS[iCnt]);
+		for (auto& iter : g_UserMap[iCnt])
 		{
-			// 다른 세션 id에서 account no 중복 로그인
-			g_Tracer.trace(21, (PVOID)user->session_id);
-			
-			CrashDump::Crash();
+			ULONGLONG time = GetTickCount64();
+			User* temp_user = iter.second;
+			if (temp_user->account_no == account_no)
+			{
+				// 다른 세션 id에서 account no 중복 로그인
+				g_Tracer.trace(21, (PVOID)user->session_id);
 
-			CPacket* send_packet = CPacket::Alloc();
+				//CrashDump::Crash();
 
-			MakeChatLogin(send_packet, 0, account_no);
+				CPacket* send_packet = CPacket::Alloc();
 
-			SendMessageUni(send_packet, user);
+				MakeChatLogin(send_packet, 0, account_no);
 
-			CPacket::Free(send_packet);
+				SendMessageUni(send_packet, user);
 
-			g_server.DisconnectSession(temp_user->session_id);
+				CPacket::Free(send_packet);
 
+				g_server.DisconnectSession(temp_user->session_id);
+				g_server.DisconnectSession(user->session_id);
 
-			return false;
+				ret = false;
+			}
 		}
-		user->Unlock();
+		LeaveCriticalSection(&g_UserMapCS[iCnt]);
+		if (!ret) return false;
 	}
-	ReleaseSRWLockShared(&g_UserMapSRW);
+		
+
 
 	InterlockedDecrement(&g_connect_cnt);
 	InterlockedIncrement(&g_login_cnt);

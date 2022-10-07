@@ -14,7 +14,7 @@ public:
 	User();
 	virtual ~User();
 
-	unsigned int GetLastRecvTime()
+	unsigned long long GetLastRecvTime()
 	{
 		return last_recv_time;
 	}
