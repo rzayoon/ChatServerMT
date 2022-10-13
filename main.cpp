@@ -12,7 +12,7 @@
 #include "ChatServer.h"
 #include "ChatLogic.h"
 #include "TextParser.h"
-
+#include "ProfileTls.h"
 
 #define SERVERPORT 6000
 
@@ -66,6 +66,8 @@ int main()
 
 				break;
 			}
+			if (input == L'p' || input == L'P')
+				ProfileDataOutText(L"profile.txt");
 		}
 
 		Sleep(1000);

@@ -45,6 +45,7 @@ public:
 	unsigned short sector_y;
 
 	unsigned long long last_recv_time;
+	unsigned long long old_recv_time;
 
 	CRITICAL_SECTION cs;
 

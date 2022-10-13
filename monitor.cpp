@@ -4,7 +4,6 @@
 #include "CNetServer.h"
 #include "monitor.h"
 #include "session.h"
-#include "JOB.h"
 
 void Monitor::IncAccept()
 {
@@ -203,7 +202,7 @@ void Monitor::Show(int session_cnt, int packet_pool, int job_queue)
 		, send_comp_time_avg
 		, max_packet, min_packet, _min_cnt, avg_packet, stc_avg
 		, now_recv, on_rcv_cnt, recv_comp_time_avg, on_recv_time_avg
-		, total_wsa, send_time_avg, packet_pool, job_queue, MAX_JOB_QUEUE, no_session);
+		, total_wsa, send_time_avg, packet_pool, job_queue, 0, no_session);
 
 
 	return;

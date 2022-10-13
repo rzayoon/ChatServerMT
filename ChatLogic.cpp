@@ -6,12 +6,12 @@
 #include "ObjectPool.h"
 #include "ChatLogic.h"
 #include "LockFreeQueue.h"
-#include "JOB.h"
 #include "User.h"
 #include "CommonProtocol.h"
 #include "ProcPacket.h"
 #include "Sector.h"
 #include "CrashDump.h"
+#include "ProfileTls.h"
 
 MemoryPoolTls<User> g_UserPool(1000);
 
@@ -67,7 +67,7 @@ void CreateUser(SS_ID s_id)
 	user->last_recv_time = GetTickCount64();
 
 	
-	g_Tracer.trace(1, (PVOID)user->session_id);
+	g_Tracer.trace(1, (PVOID)user->session_id, GetTickCount64());
 
 	// Ãß°¡
 	EnterCriticalSection(&g_UserMapCS[idx]);
@@ -90,6 +90,7 @@ void DeleteUser(SS_ID s_id)
 	User* user;
 	int idx = s_id % dfUSER_MAP_HASH;
 
+	g_Tracer.trace(2, (PVOID)s_id, GetTickCount64());
 
 	EnterCriticalSection(&g_UserMapCS[idx]);
 	auto iter = g_UserMap[idx].find(s_id);
@@ -119,7 +120,6 @@ void DeleteUser(SS_ID s_id)
 
 
 
-	g_Tracer.trace(2, user);
 
 	if (user->is_login) {
 		InterlockedDecrement(&g_login_cnt);

@@ -32,7 +32,7 @@ public:
 #ifdef AUTO_PACKET
 	LockFreeQueue<PacketPtr> send_q = LockFreeQueue<PacketPtr>(0, TRUE);
 #else
-	LockFreeQueue<CPacket*> send_q = LockFreeQueue<CPacket*>(0);
+	LockFreeQueue<CPacket*> send_q = LockFreeQueue<CPacket*>(50);
 #endif
 
 	// interlock

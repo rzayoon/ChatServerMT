@@ -10,6 +10,8 @@
 #include "Sector.h"
 #include "ObjectPool.h"
 #include "CrashDump.h"
+#include "ProfileTls.h"
+
 
 ChatServer g_server;
 
@@ -53,6 +55,7 @@ bool ChatServer::OnConnectionRequest(wchar_t* ip, unsigned short port)
 
 void ChatServer::OnClientJoin(unsigned long long session_id)
 {
+	Profile pro = Profile(L"Join");
 	CreateUser(session_id);
 
 	return;
@@ -60,7 +63,7 @@ void ChatServer::OnClientJoin(unsigned long long session_id)
 
 void ChatServer::OnClientLeave(unsigned long long session_id)
 {
-	
+	Profile pro = Profile(L"Leave");
 	DeleteUser(session_id);
 
 	return;
@@ -79,6 +82,7 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 
 	long long acc = user->account_no;
 
+	user->old_recv_time = user->last_recv_time;
 	user->last_recv_time = GetTickCount64();
 
 	bool result_proc = false;
@@ -88,19 +92,19 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 	{
 	case en_PACKET_CS_CHAT_REQ_LOGIN:
 	{
-		g_Tracer.trace(10, (PVOID)user->session_id);
+		g_Tracer.trace(10, (PVOID)user->session_id, GetTickCount64());
 		result_proc = ProcChatLogin(user, packet);
 		break;
 	}
 	case en_PACKET_CS_CHAT_REQ_SECTOR_MOVE:
 	{
-		g_Tracer.trace(11, (PVOID)user->session_id);
+		g_Tracer.trace(11, (PVOID)user->session_id, GetTickCount64());
 		result_proc = ProcChatSectorMove(user, packet);
 		break;
 	}
 	case en_PACKET_CS_CHAT_REQ_MESSAGE:
 	{
-		g_Tracer.trace(12, (PVOID)user->session_id);
+		g_Tracer.trace(12, (PVOID)user->session_id, GetTickCount64());
 		result_proc = ProcChatMessage(user, packet);
 		break;
 	}
@@ -112,7 +116,6 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 	default: // undefined protocol
 	{
 		// 예외 처리
-
 
 	}
 

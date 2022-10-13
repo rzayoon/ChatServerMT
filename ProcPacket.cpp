@@ -8,6 +8,7 @@ using std::unordered_map;
 #include "Sector.h"
 #include "CommonProtocol.h"
 #include "CrashDump.h"
+#include "ProfileTls.h"
 
 extern unordered_map<SS_ID, User*> g_UserMap[dfUSER_MAP_HASH];
 extern CRITICAL_SECTION g_UserMapCS[dfUSER_MAP_HASH];
@@ -18,6 +19,9 @@ bool ProcChatLogin(User* user, CPacket* packet)
 	__int64 account_no;
 	wchar_t id[MAX_ID_SIZE];
 	wchar_t nick[MAX_NICK_SIZE];
+	int iCnt;
+
+	Profile pro = Profile(L"Login");
 
 	int idx = user->session_id & dfUSER_MAP_HASH;
 	bool ret = true;
@@ -29,7 +33,7 @@ bool ProcChatLogin(User* user, CPacket* packet)
 	if (user->is_login == true)
 	{
 		// 같은 세션id에서 중복 로그인 메시지
-		g_Tracer.trace(20, (PVOID)user->session_id);
+		g_Tracer.trace(20, (PVOID)user->session_id, GetTickCount64());
 
 		CrashDump::Crash();
 
@@ -48,9 +52,13 @@ bool ProcChatLogin(User* user, CPacket* packet)
 	}
 	if (!ret) return false;
 
-	for (int iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
+	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
 	{
 		EnterCriticalSection(&g_UserMapCS[iCnt]);
+	}
+
+	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
+	{
 		for (auto& iter : g_UserMap[iCnt])
 		{
 			ULONGLONG time = GetTickCount64();
@@ -58,9 +66,9 @@ bool ProcChatLogin(User* user, CPacket* packet)
 			if (temp_user->account_no == account_no)
 			{
 				// 다른 세션 id에서 account no 중복 로그인
-				g_Tracer.trace(21, (PVOID)user->session_id);
+				g_Tracer.trace(21, (PVOID)user->session_id, GetTickCount64());
 
-				//CrashDump::Crash();
+				CrashDump::Crash();
 
 				CPacket* send_packet = CPacket::Alloc();
 
@@ -76,11 +84,13 @@ bool ProcChatLogin(User* user, CPacket* packet)
 				ret = false;
 			}
 		}
-		LeaveCriticalSection(&g_UserMapCS[iCnt]);
 		if (!ret) return false;
 	}
 		
-
+	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
+	{
+		LeaveCriticalSection(&g_UserMapCS[iCnt]);
+	}
 
 	InterlockedDecrement(&g_connect_cnt);
 	InterlockedIncrement(&g_login_cnt);
@@ -105,6 +115,7 @@ bool ProcChatSectorMove(User* user, CPacket* packet)
 	__int64 account_no;
 	WORD sector_x;
 	WORD sector_y;
+	Profile pro = Profile(L"SectorMove");
 
 	(*packet) >> account_no >> sector_x >> sector_y;
 
@@ -151,6 +162,8 @@ bool ProcChatMessage(User* user, CPacket* packet)
 	WORD message_len;
 
 	wchar_t message[MAX_MESSAGE];
+	Profile pro = Profile(L"ChatMessage");
+
 
 	(*packet) >> account_no >> message_len;
 
