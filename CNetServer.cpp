@@ -643,6 +643,7 @@ inline bool CNetServer::RecvPost(Session* session)
 	DWORD error_code;
 
 	int retval = WSARecv(socket, wsabuf, cnt, &recvbytes, &flags, &session->recv_overlapped, NULL);
+	session->recvbytes = recvbytes;
 	if (retval == SOCKET_ERROR)
 	{
 		if ((error_code = WSAGetLastError()) != ERROR_IO_PENDING)
@@ -730,6 +731,7 @@ inline bool CNetServer::SendPost(Session* session)
 		QueryPerformanceCounter(&end);
 		monitor.AddSendTime(&session->send_time, &end);
 
+		session->sendbytes = sendbytes;
 
 		DWORD error_code;
 		if (retval == SOCKET_ERROR)

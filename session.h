@@ -26,8 +26,10 @@ public:
 
 	OVERLAPPED recv_overlapped;
 	SOCKET recv_sock;
+	DWORD recvbytes;
 	OVERLAPPED send_overlapped;
 	SOCKET send_sock;
+	DWORD sendbytes;
 	RingBuffer recv_q = RingBuffer(2000);
 #ifdef AUTO_PACKET
 	LockFreeQueue<PacketPtr> send_q = LockFreeQueue<PacketPtr>(0, TRUE);
