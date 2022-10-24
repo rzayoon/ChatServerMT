@@ -97,6 +97,7 @@ public:
 
 	static void Crash(void)
 	{
+		DWORD time = GetTickCount64();
 		ProfileDataOutText(L"lastProfile.txt");
 
 

@@ -3,6 +3,7 @@
 #include "CPacket.h"
 #include "RingBuffer.h"
 #include "LockFreeQueue.h"
+#include "Tracer.h"
 
 class alignas(64) Session
 {
@@ -18,7 +19,6 @@ public:
 	bool used;
 #endif
 
-	alignas(64) bool disconnect;
 	alignas(64) unsigned int session_id;
 	unsigned short session_index;
 
@@ -39,15 +39,19 @@ public:
 
 	// interlock
 	alignas(64) SOCKET sock;
-	alignas(64) int io_count; // 경계에만 세우고 뒤에 다른 변수 들어올 수 있음.
+	alignas(64) int io_count; //(session ref count) 경계에만 세우고 뒤에 다른 변수 들어올 수 있음.
 	int release_flag;
+	alignas(64) int pend_count; // CancelIO 타이밍 잡기
+	int disconnect;
 	alignas(64) int send_flag;
 	alignas(64) int send_packet_cnt;  // Send에 넣은 Packet 객체 삭제에 필요
-	alignas(64) int b;
+	alignas(64) DWORD ref_time;
+	DWORD send_packet_time;
 
 	wchar_t ip[16];
 	unsigned short port;
 	CRITICAL_SECTION session_cs;
+	MiniTracer pending_tracer;
 
 #ifdef AUTO_PACKET
 	PacketPtr temp_packet[200];

@@ -142,6 +142,7 @@ void DeleteUser(SS_ID s_id)
 void SendMessageUni(CPacket* packet, User* user)
 {
 	// user lock?
+	// user delete 로직 탈 수 있다.. 
 
 	g_server.SendPacket(user->session_id, packet);
 
@@ -153,9 +154,10 @@ void SendMessageSector(CPacket* packet, int sector_x, int sector_y)
 	list<User*>& sector = g_SectorList[sector_y][sector_x];
 	User* user;
 
-	for (auto iter = sector.begin(); iter != sector.end(); ++iter)
+	for (auto iter = sector.begin(); iter != sector.end();)
 	{
 		user = (*iter);
+		++iter;  // 삭제 가능성 있으므로 미리 옮겨둠
 		SendMessageUni(packet, user);
 	}
 

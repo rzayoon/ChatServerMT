@@ -68,6 +68,11 @@ bool ProcChatLogin(User* user, CPacket* packet)
 				// 다른 세션 id에서 account no 중복 로그인
 				g_Tracer.trace(21, (PVOID)user->session_id, GetTickCount64());
 
+				ULONGLONG t = GetTickCount64();
+
+				Sleep(2000);
+
+
 				CrashDump::Crash();
 
 				CPacket* send_packet = CPacket::Alloc();

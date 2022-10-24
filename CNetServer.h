@@ -99,6 +99,8 @@ private:
 	void Disconnect(Session* session);
 
 	int UpdateIOCount(Session* session);
+	void UpdatePendCount(Session* session);
+	void CancelIOSession(Session* session);
 	void ReleaseSession(Session* session);
 
 	bool exit_flag = false;
