@@ -93,7 +93,7 @@ private:
 	void RunIoThread();
 
 	bool RecvPost(Session* session);
-	bool SendPost(Session* session);
+	void SendPost(Session* session);
 
 	// libary ³»ºÎ¿ë
 	void Disconnect(Session* session);
