@@ -613,11 +613,15 @@ inline void CNetServer::DisconnectSession(unsigned long long session_id)
 inline void CNetServer::Disconnect(Session* session)
 {
 	//InterlockedIncrement((LONG*)&session->io_count);
+	if (session->disconnect == 0)
+	{
+		if (InterlockedCompareExchange((LONG*)&session->disconnect, true, false) == false) {
+			session->pending_tracer.trace(0, session->sock, GetTickCount64());
+			// pending cnt == 0 이면 cancel IO 
+			OnClientLeave(*(unsigned long long*) & session->session_id);
+			CancelIOSession(session);
 
-	if (InterlockedExchange((LONG*)&session->disconnect, true) == false) {
-		session->pending_tracer.trace(0, session->sock, GetTickCount64());
-		// pending cnt == 0 이면 cancel IO 
-		CancelIOSession(session);
+		}
 
 	}
 	//UpdateIOCount(session);
@@ -664,6 +668,7 @@ inline bool CNetServer::RecvPost(Session* session)
 		{
 			if ((error_code = WSAGetLastError()) != ERROR_IO_PENDING)
 			{ // 요청이 실패
+				Disconnect(session); // 항상? 10054 일 때만?? 
 				int io_temp = UpdateIOCount(session);
 				tracer.trace(1, session, error_code, socket);
 				session->pending_tracer.trace(1, error_code, socket, GetTickCount64());
@@ -699,11 +704,12 @@ inline void CNetServer::SendPost(Session* session)
 	if (session->disconnect == 0)
 	{
 
-		if ((InterlockedExchange((LONG*)&session->send_flag, true)) == false)
+		if ((InterlockedExchange((LONG*)&session->send_flag, true)) == false) // compare exchange
 		{
 			long long buf_cnt = session->send_q.GetSize();
 			if (buf_cnt <= 0)
 			{
+				CrashDump::Crash();
 				log_arr[8]++;
 				session->send_flag = false;
 				return;
@@ -764,6 +770,7 @@ inline void CNetServer::SendPost(Session* session)
 				if ((error_code = WSAGetLastError()) != WSA_IO_PENDING) // 요청 자체가 실패
 				{
 					// 내가 release 시켜야하는 경우 Packet 해제 해줘야 함
+					Disconnect(session);
 					int io_temp = UpdateIOCount(session);
 					tracer.trace(2, session, error_code, socket);
 					session->pending_tracer.trace(11, error_code, socket, GetTickCount64());
@@ -846,9 +853,9 @@ inline void CNetServer::ReleaseSession(Session* session)
 			tracer.trace(75, session, session->session_id, session->sock);
 			session->pending_tracer.trace(99, session->sock);
 
-			if (session->disconnect != 2) CrashDump::Crash();
+			if (session->disconnect != 2) CrashDump::Crash(); // pending 있는 상태에서 삭제 여부
 			
-			OnClientLeave(*(unsigned long long*) & session->session_id);
+			
 
 			session->session_id = 0;
 
