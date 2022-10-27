@@ -301,11 +301,10 @@ inline void CNetServer::RunAcceptThread()
 			//접속
 			InterlockedIncrement((LONG*)&session_cnt);
 
-			// RecvPost()
-			if (RecvPost(session))
-			{
-				OnClientJoin(*((unsigned long long*) & session->session_id));
-			}
+			// 접속에 대한 처리 먼저 해야 함.
+			OnClientJoin(*((unsigned long long*) & session->session_id));
+			
+			RecvPost(session);
 
 			UpdateIOCount(session);
 
@@ -427,7 +426,7 @@ inline void CNetServer::RunIoThread()
 
 				OnSend(*(unsigned long long*) & session->session_id, cbTransferred);
 				if (session->send_sock != session->sock)
-					log_arr[3]++;
+					CrashDump::Crash();
 				//tracer.trace(31, session, session->session_id);
 
 				monitor.UpdateSendPacket(cbTransferred);
@@ -435,7 +434,7 @@ inline void CNetServer::RunIoThread()
 				int packet_cnt = session->send_packet_cnt;
 				if (packet_cnt == 0)
 				{
-					log_arr[0]++;
+					CrashDump::Crash();
 				}
 #ifdef AUTO_PACKET				
 				while (packet_cnt > 0)
@@ -463,9 +462,9 @@ inline void CNetServer::RunIoThread()
 					SendPost(session);
 
 			}
-			else
+			else // send, recv 다 아님(다른 session의 overlapped 전달)
 			{
-				log_arr[1]++;
+				CrashDump::Crash();
 			}
 		}
 		UpdateIOCount(session);
@@ -634,8 +633,6 @@ inline bool CNetServer::RecvPost(Session* session)
 	DWORD recvbytes, flags = 0;
 	bool ret = false;
 
-	int temp_io = InterlockedIncrement((LONG*)&session->io_count);
-
 	int temp_pend = InterlockedIncrement((LONG*)&session->pend_count);
 	if (session->disconnect == 0)
 	{
@@ -690,7 +687,6 @@ inline bool CNetServer::RecvPost(Session* session)
 		}
 	}
 	UpdatePendCount(session);
-	UpdateIOCount(session);
 
 	return ret;
 }
@@ -698,7 +694,6 @@ inline bool CNetServer::RecvPost(Session* session)
 inline void CNetServer::SendPost(Session* session)
 {
 	LARGE_INTEGER start, end;
-	InterlockedIncrement((LONG*)&session->io_count);
 
 	int temp_pend = InterlockedIncrement((LONG*)&session->pend_count);
 	if (session->disconnect == 0)
@@ -791,7 +786,6 @@ inline void CNetServer::SendPost(Session* session)
 	}
 	UpdatePendCount(session);
 
-	UpdateIOCount(session);
 
 	return;
 }

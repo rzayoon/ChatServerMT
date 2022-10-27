@@ -70,26 +70,25 @@ bool ProcChatLogin(User* user, CPacket* packet)
 
 				ULONGLONG t = GetTickCount64();
 
-				Sleep(2000);
+				//CrashDump::Crash();
 
-
-				CrashDump::Crash();
-
-				CPacket* send_packet = CPacket::Alloc();
+				/*CPacket* send_packet = CPacket::Alloc();
 
 				MakeChatLogin(send_packet, 0, account_no);
 
 				SendMessageUni(send_packet, user);
 
-				CPacket::Free(send_packet);
+				CPacket::Free(send_packet);*/
 
-				g_server.DisconnectSession(temp_user->session_id);
-				g_server.DisconnectSession(user->session_id);
+				InterlockedIncrement(&g_duplicate_login);
+
+				//g_server.DisconnectSession(temp_user->session_id);
+				//g_server.DisconnectSession(user->session_id);
 
 				ret = false;
 			}
 		}
-		if (!ret) return false;
+		if (!ret) break;
 	}
 		
 	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
@@ -131,24 +130,78 @@ bool ProcChatSectorMove(User* user, CPacket* packet)
 		return false;
 	}
 
-	SectorAround sect_around;
-	sect_around.count = 0;
-	// 데드락 확인 필요
 
 	if (sector_x < 0 || sector_x >= SECTOR_MAX_X || sector_y < 0 || sector_y >= SECTOR_MAX_Y)
 	{
 		return false;
 	}
 
+	// todo SectorMove 함수화 하기
+	WORD lock_y[2];
+	WORD lock_x[2];
+	int lock_cnt;
 
-	Sector_RemoveUser(user);
+	if (!user->is_in_sector)
+	{
+		lock_y[0] = sector_y;
+		lock_x[0] = sector_x;
+		lock_cnt = 1;
+	}
+	else
+	{
+		if (user->sector_y < sector_y)
+		{
+			lock_y[0] = user->sector_y;
+			lock_x[0] = user->sector_x;
+			lock_y[1] = sector_y;
+			lock_x[1] = sector_x;
+		}
+		else if (user->sector_y > sector_y)
+		{
+			lock_y[0] = sector_y;
+			lock_x[0] = sector_x;
+			lock_y[1] = user->sector_y;
+			lock_x[1] = user->sector_x;
+		}
+		else // y 같음
+		{
+			if (user->sector_x <= sector_x)
+			{
+				lock_y[0] = user->sector_y;
+				lock_x[0] = user->sector_x;
+				lock_y[1] = sector_y;
+				lock_x[1] = sector_x;
+			}
+			else
+			{
+				lock_y[0] = sector_y;
+				lock_x[0] = sector_x;
+				lock_y[1] = user->sector_y;
+				lock_x[1] = user->sector_x;
+			}
+		}
 
-	// 이 사이에 다른 채팅 못 받을 수 있음
+
+		lock_cnt = 2;
+	}
+
+	for (int i = 0; i < lock_cnt; i++)
+	{
+		LockSector(lock_y[i], lock_x[i]);
+	}
+
+	if(user->is_in_sector)
+		Sector_RemoveUser(user);
 
 	user->sector_x = sector_x; 
 	user->sector_y = sector_y;
 
 	Sector_AddUser(user);
+
+	for (int i = 0; i < lock_cnt; i++)
+	{
+		UnlockSector(lock_y[i], lock_x[i]);
+	}
 
 	CPacket* send_packet = CPacket::Alloc();
 

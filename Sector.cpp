@@ -3,7 +3,7 @@
 #include "ChatLogic.h"
 #include "Sector.h"
 #include "User.h"
-
+#include "CrashDump.h"
 
 list<User*> g_SectorList[SECTOR_MAX_Y][SECTOR_MAX_X];
 CRITICAL_SECTION g_SectorLock[SECTOR_MAX_Y][SECTOR_MAX_X];
@@ -12,7 +12,7 @@ CRITICAL_SECTION g_SectorLock[SECTOR_MAX_Y][SECTOR_MAX_X];
 void Sector_AddUser(User* user)
 {
 	if (user->is_in_sector)
-		return;
+		CrashDump::Crash();
 
 	unsigned short sector_y(user->sector_y), sector_x(user->sector_x);
 
@@ -28,7 +28,7 @@ void Sector_AddUser(User* user)
 void Sector_RemoveUser(User* user)
 {
 	if (!user->is_in_sector)
-		return;
+		CrashDump::Crash();
 
 	int sector_y = user->sector_y;
 	int sector_x = user->sector_x;

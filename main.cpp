@@ -75,8 +75,8 @@ int main()
 		g_server.Show();
 		wprintf(L"Connect : %d\n"
 			L"Login : %d\n"
-			L"Proc Job/sec : %d\n",
-			g_connect_cnt, g_login_cnt, 0);
+			L"Duplicated login proc : %d\n",
+			g_connect_cnt, g_login_cnt, g_duplicate_login);
 	}
 
 	timeEndPeriod(1);

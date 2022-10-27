@@ -12,6 +12,7 @@ using std::unordered_map;
 
 extern unsigned int g_connect_cnt;
 extern unsigned int g_login_cnt;
+extern unsigned int g_duplicate_login;
 
 extern Tracer g_Tracer;
 
