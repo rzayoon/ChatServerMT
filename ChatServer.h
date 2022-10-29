@@ -31,3 +31,4 @@ private:
 };
 
 extern ChatServer g_server;
+extern LONG g_running_worker;

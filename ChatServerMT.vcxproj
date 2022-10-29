@@ -149,6 +149,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CCpuUsage.cpp" />
     <ClCompile Include="ChatLogic.cpp" />
     <ClCompile Include="ChatServer.cpp" />
     <ClCompile Include="CNetServer.cpp" />
@@ -167,6 +168,7 @@
     <ClCompile Include="User.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CCpuUsage.h" />
     <ClInclude Include="ChatLogic.h" />
     <ClInclude Include="ChatProtocol.h" />
     <ClInclude Include="ChatServer.h" />

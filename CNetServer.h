@@ -14,7 +14,7 @@ class CNetServer
 	enum {
 		ID_MASK = 0xFFFFFFFF,	
 		INDEX_BIT_SHIFT = 32,
-		MAX_WSABUF = 20
+		MAX_WSABUF = 2
 	};
 
 public:

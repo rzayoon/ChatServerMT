@@ -335,11 +335,13 @@ inline void CNetServer::RunIoThread()
 		Session* session;
 		ret_gqcp = GetQueuedCompletionStatus(hcp, &cbTransferred, (PULONG_PTR)&session, (LPOVERLAPPED*)&overlapped, INFINITE); // overlapped가 null인지 확인 우선
 
+		OnWorkerThreadBegin();
 		if (overlapped == NULL) // deque 실패 1. timeout 2. 잘못 호출(Invalid handle) 3. 임의로 queueing 한 것(PostQueue)
 		{
 			wprintf(L"%d NULL overlapped [error : %d]\n", thread_id, WSAGetLastError());
 			break;
 		}
+
 
 		if (ret_gqcp == 0)
 		{
@@ -360,7 +362,6 @@ inline void CNetServer::RunIoThread()
 			}
 		}
 		else {
-			OnWorkerThreadBegin();
 			if (&session->recv_overlapped == overlapped) // recv 결과 처리
 			{
 				if (session->recv_sock != session->sock)

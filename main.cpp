@@ -13,6 +13,8 @@
 #include "ChatLogic.h"
 #include "TextParser.h"
 #include "ProfileTls.h"
+#include "CCpuUsage.h"
+
 
 #define SERVERPORT 6000
 
@@ -50,6 +52,8 @@ int main()
 	MultiByteToWideChar(CP_ACP, 0, ip, 16, wip, 16);
 
 	g_server.Start(wip, port, worker, max_worker, max_session, max_user, packet_key, packet_code);
+	CCpuUsage CpuTime;
+
 
 	DWORD oldTick = timeGetTime();
 	while (1)
@@ -78,8 +82,11 @@ int main()
 		wprintf(L"Connect : %d\n"
 			L"Login : %d\n"
 			L"Duplicated login proc : %d\n"
-			L"Message TPS : %d\n",
-			g_connect_cnt, g_login_cnt, g_duplicate_login, message_tps);
+			L"Message TPS : %d\n"
+			L"Running WorkerThread : %d\n",
+			g_connect_cnt, g_login_cnt, g_duplicate_login, message_tps, g_running_worker);
+
+		CpuTime.Show();
 	}
 
 	timeEndPeriod(1);

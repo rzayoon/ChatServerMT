@@ -19,7 +19,7 @@ ChatServer g_server;
 extern unordered_map<SS_ID, User*> g_UserMap[dfUSER_MAP_HASH];
 extern CRITICAL_SECTION g_UserMapCS[dfUSER_MAP_HASH];
 
-
+alignas(64) LONG g_running_worker;
 
 // session key -> account no 중복 검사 시 순회 필요 ( login )
 // account no key -> ?? session key 중복 검사?? join - leave 시 검색해서 찾아야 함.
@@ -147,11 +147,15 @@ void ChatServer::OnSend(unsigned long long session_id, int send_size)
 
 void ChatServer::OnWorkerThreadBegin()
 {
+	InterlockedIncrement((LONG*)&g_running_worker);
+
 	return;
 }
 
 void ChatServer::OnWorkerThreadEnd()
 {
+	InterlockedDecrement((LONG*)&g_running_worker);
+
 	return;
 }
 
