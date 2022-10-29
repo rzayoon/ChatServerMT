@@ -14,8 +14,8 @@
 	#define PRO_END(TagName)
 #endif
 
-#define MAX_THREAD 40
-#define MAX_PROFILE 50
+#define MAX_THREAD 120
+#define MAX_PROFILE 40
 #define PRO_TAG_SIZE 64
 
 

@@ -19,6 +19,8 @@ ChatServer g_server;
 extern unordered_map<SS_ID, User*> g_UserMap[dfUSER_MAP_HASH];
 extern CRITICAL_SECTION g_UserMapCS[dfUSER_MAP_HASH];
 
+
+
 // session key -> account no 중복 검사 시 순회 필요 ( login )
 // account no key -> ?? session key 중복 검사?? join - leave 시 검색해서 찾아야 함.
 
@@ -45,7 +47,9 @@ ChatServer::~ChatServer()
 
 bool ChatServer::OnConnectionRequest(wchar_t* ip, unsigned short port)
 {
-	if (g_login_cnt > max_user) // 느슨하게
+	// 느슨하게 login cnt 증가 스레드 accept스레드라서 더 올라가지는 않음
+	
+	if (g_login_cnt > max_user) 
 	{
 		return false;
 	}
@@ -58,6 +62,7 @@ void ChatServer::OnClientJoin(unsigned long long session_id)
 	Profile pro = Profile(L"Join");
 	CreateUser(session_id);
 
+	InterlockedIncrement(&g_message_tps);
 	return;
 }
 
@@ -66,6 +71,7 @@ void ChatServer::OnClientLeave(unsigned long long session_id)
 	Profile pro = Profile(L"Leave");
 	DeleteUser(session_id);
 
+	InterlockedIncrement(&g_message_tps);
 	return;
 }
 
@@ -125,6 +131,7 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 		g_server.DisconnectSession(user->session_id);
 
 	ReleaseUser(user);
+	InterlockedIncrement(&g_message_tps);
 
 	return;
 }

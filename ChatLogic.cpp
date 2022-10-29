@@ -13,7 +13,7 @@
 #include "CrashDump.h"
 #include "ProfileTls.h"
 
-MemoryPoolTls<User> g_UserPool(1000);
+MemoryPoolTls<User> g_UserPool(500);
 
 unordered_map<SS_ID, User*> g_UserMap[dfUSER_MAP_HASH];
 CRITICAL_SECTION g_UserMapCS[dfUSER_MAP_HASH];
@@ -21,6 +21,8 @@ CRITICAL_SECTION g_UserMapCS[dfUSER_MAP_HASH];
 alignas(64) unsigned int g_connect_cnt;
 alignas(64) unsigned int g_login_cnt;
 alignas(64) unsigned int g_duplicate_login;
+alignas(64) unsigned int g_message_tps;
+
 Tracer g_Tracer;
 
 bool AcquireUser(SS_ID s_id, User** user)

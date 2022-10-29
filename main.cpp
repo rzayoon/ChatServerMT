@@ -72,11 +72,14 @@ int main()
 
 		Sleep(1000);
 
+		unsigned int message_tps = InterlockedExchange(&g_message_tps, 0);
+
 		g_server.Show();
 		wprintf(L"Connect : %d\n"
 			L"Login : %d\n"
-			L"Duplicated login proc : %d\n",
-			g_connect_cnt, g_login_cnt, g_duplicate_login);
+			L"Duplicated login proc : %d\n"
+			L"Message TPS : %d\n",
+			g_connect_cnt, g_login_cnt, g_duplicate_login, message_tps);
 	}
 
 	timeEndPeriod(1);

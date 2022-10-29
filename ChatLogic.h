@@ -2,7 +2,7 @@
 #include <unordered_map>
 using std::unordered_map;
 
-#define dfUSER_MAP_HASH 4
+#define dfUSER_MAP_HASH 5
 
 #include "CPacket.h"
 #include "User.h"
@@ -13,6 +13,7 @@ using std::unordered_map;
 extern unsigned int g_connect_cnt;
 extern unsigned int g_login_cnt;
 extern unsigned int g_duplicate_login;
+extern unsigned int g_message_tps;
 
 extern Tracer g_Tracer;
 
