@@ -150,13 +150,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CCpuUsage.cpp" />
-    <ClCompile Include="ChatLogic.cpp" />
     <ClCompile Include="ChatServer.cpp" />
     <ClCompile Include="CNetServer.cpp" />
     <ClCompile Include="CPacket.cpp" />
     <ClCompile Include="CrashDump.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="MakePacket.cpp" />
+    <ClCompile Include="PacketMaker.cpp" />
     <ClCompile Include="monitor.cpp" />
     <ClCompile Include="ProcPacket.cpp" />
     <ClCompile Include="ProfileTls.cpp" />
@@ -169,7 +168,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CCpuUsage.h" />
-    <ClInclude Include="ChatLogic.h" />
     <ClInclude Include="ChatProtocol.h" />
     <ClInclude Include="ChatServer.h" />
     <ClInclude Include="CNetServer.h" />
@@ -179,7 +177,7 @@
     <ClInclude Include="LockFreePool.h" />
     <ClInclude Include="LockFreeQueue.h" />
     <ClInclude Include="LockFreeStack.h" />
-    <ClInclude Include="MakePacket.h" />
+    <ClInclude Include="PacketMaker.h" />
     <ClInclude Include="MemoryPoolTls.h" />
     <ClInclude Include="monitor.h" />
     <ClInclude Include="NetProtocol.h" />

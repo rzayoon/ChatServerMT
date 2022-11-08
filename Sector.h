@@ -21,12 +21,37 @@ struct SectorAround
 
 };
 
+/// <summary>
+/// User 내 저장된 섹터 위치 멤버에 맞는 Sector List에 User 추가
+/// 
+/// </summary>
+/// <param name="user"></param>
 void Sector_AddUser(User* user);
 
+/// <summary>
+/// 현재 user가 위치한 Sector에서 user 제거
+/// 
+/// </summary>
+/// <param name="user"></param>
 void Sector_RemoveUser(User* user);
 
+/// <summary>
+/// 
+/// </summary>
+/// <param name="sector_x"> 주변 섹터 얻을 Sector의 x 좌표 </param>
+/// <param name="sector_y"> 주변 섹터 얻을 Sector의 y 좌표 </param>
+/// <param name="sector_around"> [Out] 주변 섹터 정보 </param>
 void GetSectorAround(int sector_x, int sector_y, SectorAround* sector_around);
+
+/// <summary>
+/// 주변 섹터에 대한 Lock 획득
+/// </summary>
+/// <param name="sector_around"></param>
 void LockSectorAround(const SectorAround* sector_around);
+/// <summary>
+/// 주변 섹터 Lock 반환
+/// </summary>
+/// <param name="sector_around"></param>
 void UnlockSectorAround(const SectorAround* sector_around);
 
 

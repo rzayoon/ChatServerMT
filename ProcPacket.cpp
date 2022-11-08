@@ -2,19 +2,16 @@
 using std::unordered_map;
 
 #include "ChatServer.h"
-#include "ChatLogic.h"
 #include "ProcPacket.h"
-#include "MakePacket.h"
+#include "PacketMaker.h"
 #include "Sector.h"
 #include "CommonProtocol.h"
 #include "CrashDump.h"
 #include "ProfileTls.h"
 
-extern unordered_map<SS_ID, User*> g_UserMap[dfUSER_MAP_HASH];
-extern CRITICAL_SECTION g_UserMapCS[dfUSER_MAP_HASH];
+extern ChatServer g_chatServer;
 
-
-bool ProcChatLogin(User* user, CPacket* packet)
+bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 {
 	__int64 account_no;
 	wchar_t id[MAX_ID_SIZE];
@@ -33,19 +30,19 @@ bool ProcChatLogin(User* user, CPacket* packet)
 	if (user->is_login == true)
 	{
 		// 같은 세션id에서 중복 로그인 메시지
-		g_Tracer.trace(20, (PVOID)user->session_id, GetTickCount64());
+		g_chatServer.m_chatTracer.trace(20, (PVOID)user->session_id, GetTickCount64());
 
 		CrashDump::Crash();
 
 		CPacket* send_packet = CPacket::Alloc();
 		
-		MakeChatLogin(send_packet, 0, account_no);
+		PacketMaker::MakeLogin(send_packet, 0, account_no);
 
-		SendMessageUni(send_packet, user);
+		g_chatServer.SendMessageUni(send_packet, user);
 
 		CPacket::Free(send_packet);
 
-		g_server.DisconnectSession(user->session_id);
+		g_chatServer.DisconnectSession(user->session_id);
 		
 		
 		ret = false;
@@ -54,19 +51,19 @@ bool ProcChatLogin(User* user, CPacket* packet)
 
 	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
 	{
-		EnterCriticalSection(&g_UserMapCS[iCnt]);
+		EnterCriticalSection(&g_chatServer.m_userMapCS[iCnt]);
 	}
 
 	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
 	{
-		for (auto& iter : g_UserMap[iCnt])
+		for (auto& iter : g_chatServer.m_userMap[iCnt])
 		{
 			ULONGLONG time = GetTickCount64();
 			User* temp_user = iter.second;
 			if (temp_user->account_no == account_no)
 			{
 				// 다른 세션 id에서 account no 중복 로그인
-				g_Tracer.trace(21, (PVOID)user->session_id, GetTickCount64());
+				g_chatServer.m_chatTracer.trace(21, (PVOID)user->session_id, GetTickCount64());
 
 				ULONGLONG t = GetTickCount64();
 
@@ -80,7 +77,7 @@ bool ProcChatLogin(User* user, CPacket* packet)
 
 				CPacket::Free(send_packet);*/
 
-				InterlockedIncrement(&g_duplicate_login);
+				InterlockedIncrement(&g_chatServer.m_duplicateLogin);
 
 				//g_server.DisconnectSession(temp_user->session_id);
 				//g_server.DisconnectSession(user->session_id);
@@ -93,11 +90,11 @@ bool ProcChatLogin(User* user, CPacket* packet)
 		
 	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
 	{
-		LeaveCriticalSection(&g_UserMapCS[iCnt]);
+		LeaveCriticalSection(&g_chatServer.m_userMapCS[iCnt]);
 	}
 
-	InterlockedDecrement(&g_connect_cnt);
-	InterlockedIncrement(&g_login_cnt);
+	InterlockedDecrement(&g_chatServer.m_connectCnt);
+	InterlockedIncrement(&g_chatServer.m_loginCnt);
 
 	user->is_login = true;
 	user->account_no = account_no;
@@ -106,15 +103,15 @@ bool ProcChatLogin(User* user, CPacket* packet)
 
 	CPacket* send_packet = CPacket::Alloc();
 
-	MakeChatLogin(send_packet, 1, user->account_no);
-	SendMessageUni(send_packet, user);
+	PacketMaker::MakeLogin(send_packet, 1, user->account_no);
+	g_chatServer.SendMessageUni(send_packet, user);
 
 	CPacket::Free(send_packet);
 
 	return true;
 }
 
-bool ProcChatSectorMove(User* user, CPacket* packet)
+bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 {
 	__int64 account_no;
 	WORD sector_x;
@@ -205,16 +202,17 @@ bool ProcChatSectorMove(User* user, CPacket* packet)
 
 	CPacket* send_packet = CPacket::Alloc();
 
-	MakeChatSectorMove(send_packet, user->account_no, user->sector_x, user->sector_y);
+	PacketMaker::MakeSectorMove(send_packet, user->account_no, user->sector_x, user->sector_y);
 
-	SendMessageUni(send_packet, user);
+	g_chatServer.SendMessageUni(send_packet, user);
 
 	CPacket::Free(send_packet);
 
 	return true;
 
 }
-bool ProcChatMessage(User* user, CPacket* packet)
+
+bool PacketProcessor::ProcMessage(User* user, CPacket* packet)
 {
 	__int64 account_no;
 	WORD message_len;
@@ -235,9 +233,9 @@ bool ProcChatMessage(User* user, CPacket* packet)
 
 	CPacket* send_packet = CPacket::Alloc();
 
-	MakeChatMessage(send_packet, account_no, user->id, user->nickname, message_len, message);
+	PacketMaker::MakeMessage(send_packet, account_no, user->id, user->nickname, message_len, message);
 
-	SendMessageAround(send_packet, user);
+	g_chatServer.SendMessageAround(send_packet, user);
 
 	CPacket::Free(send_packet);
 

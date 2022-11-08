@@ -34,15 +34,16 @@ private:
 	virtual ~CPacket();
 
 
-public:
 	/// <summary>
 	/// 패킷 파괴
 	/// </summary>
 	/// <param name=""></param>
 	inline void Release(void);
 
+public:
+
 	/// <summary>
-	/// 패킷 청소
+	/// 패킷 초기화
 	/// </summary>
 	/// <param name=""></param>
 	inline void Clear(void);
@@ -72,7 +73,7 @@ public:
 
 	/// <summary>
 	/// 버퍼 쓰기 pos 이동
-	/// 외부에서 강제로 버퍼 내용 수정시 사용
+	/// 외부에서 직접 버퍼 내용 수정시 사용
 	/// </summary>
 	/// <param name="size">이동 사이즈</param>
 	/// <returns>이동된 사이즈</returns>
@@ -80,7 +81,7 @@ public:
 
 	/// <summary>
 	/// 버퍼 읽기 pos 이동
-	/// 외부에서 강제로 버퍼 내용 수정시 사용
+	/// 외부에서 직접 버퍼 내용 수정시 사용
 	/// </summary>
 	/// <param name="size">이동 사이즈</param>
 	/// <returns>이동된 사이즈</returns>
@@ -126,7 +127,14 @@ public:
 	int PutData(char* src, int size);
 
 
-
+	/// <summary>
+	/// Packet을 할당 받는다. 
+	/// 할당받은 Packet 객체는 Free(packet)으로 반환해야 함.
+	/// 다른 스레드로 전달 시 Packet.AddRef()를 호출하고, 현재 스레드에서 Free(packet) 호출한다.
+	/// 전달받은 스레드도 Free(packet)을 호출하여 정리하도록 한다.
+	/// 
+	/// </summary>
+	/// <returns></returns>
 	inline static CPacket* Alloc()
 	{
 		CPacket* packet = packet_pool.Alloc();
@@ -134,6 +142,12 @@ public:
 		return packet;
 	}
 
+	/// <summary>
+	/// Packet 반환
+	/// 이 함수를 호출한 뒤에는 packet을 사용해서는 안된다.
+	/// 레퍼런스 카운트가 감소되어 0일 경우 Packet Pool에 적재됨.
+	/// </summary>
+	/// <param name="packet"></param>
 	inline static void Free(CPacket* packet)
 	{
 		packet->SubRef();
@@ -141,6 +155,9 @@ public:
 		return;
 	}
 
+	/// <summary>
+	/// Packet을 다른 스레드로 넘길 경우 현재 스레드에서 정리하기 전에 호출한다.
+	/// </summary>
 	inline void AddRef()
 	{
 		InterlockedIncrement((LONG*)&ref_cnt);
@@ -159,7 +176,15 @@ public:
 		return;
 	}
 
+	/// <summary>
+	/// Packet의 데이터 인코딩
+	/// 하나의 패킷에 대해 전체 스레드에서 1회만 호출되어야 함.
+	/// </summary>
 	void Encode();
+	/// <summary>
+	/// 받은 패킷 디코딩
+	/// </summary>
+	/// <returns></returns>
 	bool Decode();
 
 private:

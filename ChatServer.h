@@ -1,10 +1,19 @@
 #pragma once
-#include "CNetServer.h"
 
+#include <unordered_map>
+using std::unordered_map;
+
+#include "CNetServer.h"
+#include "User.h"
+#include "MemoryPoolTls.h"
+
+#define dfUSER_MAP_HASH 1
 
 
 class ChatServer : public CNetServer
 {
+	friend class PacketProcessor;
+
 public:
 	ChatServer();
 	virtual ~ChatServer();
@@ -24,11 +33,35 @@ private:
 
 	void OnError(int errorcode, const wchar_t* msg);
 
+public:
 
-	HANDLE m_hSingleThread;
+	alignas(64) LONG runningWorker;
 
+private:
 
+	bool AcquireUser(SS_ID s_id, User** user);
+	void ReleaseUser(User* user);
+	void CreateUser(SS_ID s_id);
+	void DeleteUser(SS_ID s_id);
+
+	void SendMessageUni(CPacket* packet, User* user);
+	void SendMessageSector(CPacket* packet, int sector_x, int sector_y);
+	void SendMessageAround(CPacket* packet, User* user);
+
+	MemoryPoolTls<User> m_userPool;
+
+	unordered_map<SS_ID, User*> m_userMap[dfUSER_MAP_HASH];
+	CRITICAL_SECTION m_userMapCS[dfUSER_MAP_HASH];
+
+private:
+
+	alignas(64) unsigned int m_connectCnt;
+	alignas(64) unsigned int m_loginCnt;
+	alignas(64) unsigned int m_duplicateLogin;
+	alignas(64) unsigned int m_messageTps;
+
+	Tracer m_chatTracer;
+
+public:
+	void Show();
 };
-
-extern ChatServer g_server;
-extern LONG g_running_worker;

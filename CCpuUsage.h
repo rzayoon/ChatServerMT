@@ -17,7 +17,13 @@ while(1)
 
 }
 
+OR
 
+while(1)
+{
+	CPUTime.Show();
+	Sleep(1000);
+}
 
 
 */

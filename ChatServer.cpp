@@ -4,7 +4,6 @@
 
 #include "MemoryPoolTls.h"
 #include "ChatServer.h"
-#include "ChatLogic.h"
 #include "CommonProtocol.h"
 #include "ProcPacket.h"
 #include "Sector.h"
@@ -13,34 +12,28 @@
 #include "ProfileTls.h"
 
 
-ChatServer g_server;
-
-
-extern unordered_map<SS_ID, User*> g_UserMap[dfUSER_MAP_HASH];
-extern CRITICAL_SECTION g_UserMapCS[dfUSER_MAP_HASH];
-
-alignas(64) LONG g_running_worker;
-
-// session key -> account no 중복 검사 시 순회 필요 ( login )
-// account no key -> ?? session key 중복 검사?? join - leave 시 검색해서 찾아야 함.
-
 
 
 ChatServer::ChatServer()
 {
-	//m_hSingleThread = (HANDLE)_beginthreadex(nullptr, 0, SingleUpdate, nullptr, 0, nullptr);
 	for(int i = 0; i < dfUSER_MAP_HASH; i++)
-		InitializeCriticalSection(&g_UserMapCS[i]);
+		InitializeCriticalSection(&m_userMapCS[i]);
 
 	InitSector();
 
+	m_connectCnt = 0;
+	m_loginCnt = 0;
+	m_duplicateLogin = 0;
+	m_messageTps = 0;
+
+	runningWorker = 0;
 }
 
 
 ChatServer::~ChatServer()
 {
 	for (int i = 0; i < dfUSER_MAP_HASH; i++)
-		DeleteCriticalSection(&g_UserMapCS[i]);
+		DeleteCriticalSection(&m_userMapCS[i]);
 	ReleaseSector();
 
 }
@@ -49,7 +42,7 @@ bool ChatServer::OnConnectionRequest(wchar_t* ip, unsigned short port)
 {
 	// 느슨하게 login cnt 증가 스레드 accept스레드라서 더 올라가지는 않음
 	
-	if (g_login_cnt > max_user) 
+	if (m_loginCnt > m_maxUser)
 	{
 		return false;
 	}
@@ -62,7 +55,7 @@ void ChatServer::OnClientJoin(unsigned long long session_id)
 	Profile pro = Profile(L"Join");
 	CreateUser(session_id);
 
-	InterlockedIncrement(&g_message_tps);
+	InterlockedIncrement(&m_messageTps);
 	return;
 }
 
@@ -71,7 +64,7 @@ void ChatServer::OnClientLeave(unsigned long long session_id)
 	Profile pro = Profile(L"Leave");
 	DeleteUser(session_id);
 
-	InterlockedIncrement(&g_message_tps);
+	InterlockedIncrement(&m_messageTps);
 	return;
 }
 
@@ -98,20 +91,20 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 	{
 	case en_PACKET_CS_CHAT_REQ_LOGIN:
 	{
-		g_Tracer.trace(10, (PVOID)user->session_id, GetTickCount64());
-		result_proc = ProcChatLogin(user, packet);
+		m_chatTracer.trace(10, (PVOID)user->session_id, GetTickCount64());
+		result_proc = PacketProcessor::ProcLogin(user, packet);
 		break;
 	}
 	case en_PACKET_CS_CHAT_REQ_SECTOR_MOVE:
 	{
-		g_Tracer.trace(11, (PVOID)user->session_id, GetTickCount64());
-		result_proc = ProcChatSectorMove(user, packet);
+		m_chatTracer.trace(11, (PVOID)user->session_id, GetTickCount64());
+		result_proc = PacketProcessor::ProcSectorMove(user, packet);
 		break;
 	}
 	case en_PACKET_CS_CHAT_REQ_MESSAGE:
 	{
-		g_Tracer.trace(12, (PVOID)user->session_id, GetTickCount64());
-		result_proc = ProcChatMessage(user, packet);
+		m_chatTracer.trace(12, (PVOID)user->session_id, GetTickCount64());
+		result_proc = PacketProcessor::ProcMessage(user, packet);
 		break;
 	}
 	case en_PACKET_CS_CHAT_REQ_HEARTBEAT:
@@ -122,16 +115,16 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 	default: // undefined protocol
 	{
 		// 예외 처리
-
+		break;
 	}
 
 	}
 
 	if (!result_proc) 
-		g_server.DisconnectSession(user->session_id);
+		DisconnectSession(user->session_id);
 
 	ReleaseUser(user);
-	InterlockedIncrement(&g_message_tps);
+	InterlockedIncrement(&m_messageTps);
 
 	return;
 }
@@ -147,14 +140,14 @@ void ChatServer::OnSend(unsigned long long session_id, int send_size)
 
 void ChatServer::OnWorkerThreadBegin()
 {
-	InterlockedIncrement((LONG*)&g_running_worker);
+	InterlockedIncrement((LONG*)&runningWorker);
 
 	return;
 }
 
 void ChatServer::OnWorkerThreadEnd()
 {
-	InterlockedDecrement((LONG*)&g_running_worker);
+	InterlockedDecrement((LONG*)&runningWorker);
 
 	return;
 }
@@ -165,3 +158,183 @@ void ChatServer::OnError(int errorcode, const wchar_t* msg)
 	return;
 }
 
+
+
+
+bool ChatServer::AcquireUser(SS_ID s_id, User** user)
+{
+	bool ret = true;
+
+	unsigned int idx = s_id % dfUSER_MAP_HASH;
+
+	EnterCriticalSection(&m_userMapCS[idx]);
+	auto iter = m_userMap[idx].find(s_id);
+	if (iter == m_userMap[idx].end())
+		CrashDump::Crash();
+	*user = iter->second;
+	(*user)->Lock();
+
+	LeaveCriticalSection(&m_userMapCS[idx]);
+
+
+	return true;
+}
+
+void ChatServer::ReleaseUser(User* user)
+{
+	user->Unlock();
+
+	return;
+}
+
+// accept thread에서 호출
+void ChatServer::CreateUser(SS_ID s_id)
+{
+	User* user = m_userPool.Alloc();
+	int idx = s_id % dfUSER_MAP_HASH;
+
+
+	if (user == nullptr)
+		CrashDump::Crash();
+
+	user->Lock();
+
+	user->session_id = s_id;
+	user->sector_x = -1;
+	user->sector_y = -1;
+	user->last_recv_time = GetTickCount64();
+
+
+	m_chatTracer.trace(1, (PVOID)user->session_id, GetTickCount64());
+
+	// 추가
+	EnterCriticalSection(&m_userMapCS[idx]);
+	if (m_userMap[idx].find(s_id) != m_userMap[idx].end())
+		CrashDump::Crash();
+
+	m_userMap[idx][s_id] = user;
+	LeaveCriticalSection(&m_userMapCS[idx]);
+
+	user->Unlock();
+
+	InterlockedIncrement(&m_connectCnt);
+
+	return;
+}
+
+//Release한 스레드에서 호출
+void ChatServer::DeleteUser(SS_ID s_id)
+{
+	User* user;
+	int idx = s_id % dfUSER_MAP_HASH;
+
+	m_chatTracer.trace(2, (PVOID)s_id, GetTickCount64());
+
+	EnterCriticalSection(&m_userMapCS[idx]);
+	auto iter = m_userMap[idx].find(s_id);
+	if (iter == m_userMap[idx].end())
+		CrashDump::Crash();
+	user = iter->second;
+
+
+	m_userMap[idx].erase(s_id);
+	LeaveCriticalSection(&m_userMapCS[idx]);
+
+	user->Lock();
+	if (user->session_id != s_id)
+	{
+		user->Unlock();
+		return;
+	}
+
+	if (user->is_in_sector)
+	{
+		Sector_RemoveUser(user);
+		user->is_in_sector = false;
+	}
+
+	user->sector_x = SECTOR_MAX_X;
+	user->sector_y = SECTOR_MAX_Y;
+
+
+
+
+	if (user->is_login) {
+		InterlockedDecrement(&m_loginCnt);
+		user->is_login = false;
+	}
+	else
+		InterlockedDecrement(&m_connectCnt);
+
+	user->session_id = -1;
+	user->account_no = -1;
+
+	user->Unlock();
+
+	m_userPool.Free(user);
+
+	return;
+
+}
+
+void ChatServer::SendMessageUni(CPacket* packet, User* user)
+{
+	// user lock?
+	// user delete 로직 탈 수 있다.. 
+
+	SendPacket(user->session_id, packet);
+
+	return;
+}
+
+void ChatServer::SendMessageSector(CPacket* packet, int sector_x, int sector_y)
+{
+	list<User*>& sector = g_SectorList[sector_y][sector_x];
+	User* user;
+
+	for (auto iter = sector.begin(); iter != sector.end();)
+	{
+		user = (*iter);
+		++iter;  // 삭제 가능성 있으므로 미리 옮겨둠
+		SendMessageUni(packet, user);
+	}
+
+	return;
+}
+
+
+void ChatServer::SendMessageAround(CPacket* packet, User* user)
+{
+	SectorAround sect_around;
+	int cnt;
+
+
+	GetSectorAround(user->sector_x, user->sector_y, &sect_around);
+
+	LockSectorAround(&sect_around);
+
+	for (cnt = 0; cnt < sect_around.count; cnt++)
+	{
+		SendMessageSector(packet, sect_around.around[cnt].x, sect_around.around[cnt].y);
+	}
+
+	UnlockSectorAround(&sect_around);
+
+	return;
+}
+
+
+void ChatServer::Show()
+{
+	CNetServer::Show();
+
+	unsigned int message_tps = InterlockedExchange(&m_messageTps, 0);
+	wprintf(L"Connect : %d\n"
+		L"Login : %d\n"
+		L"Duplicated login proc : %d\n"
+		L"Message TPS : %d\n"
+		L"Running WorkerThread : %d\n",
+		m_connectCnt, m_loginCnt, m_duplicateLogin, message_tps, runningWorker);
+
+
+}

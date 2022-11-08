@@ -10,7 +10,6 @@
 #include <conio.h>
 
 #include "ChatServer.h"
-#include "ChatLogic.h"
 #include "TextParser.h"
 #include "ProfileTls.h"
 #include "CCpuUsage.h"
@@ -18,6 +17,7 @@
 
 #define SERVERPORT 6000
 
+ChatServer g_chatServer;
 
 int main()
 {
@@ -51,7 +51,9 @@ int main()
 
 	MultiByteToWideChar(CP_ACP, 0, ip, 16, wip, 16);
 
-	g_server.Start(wip, port, worker, max_worker, max_session, max_user, packet_key, packet_code);
+	
+
+	g_chatServer.Start(wip, port, worker, max_worker, max_session, max_user, packet_key, packet_code);
 	CCpuUsage CpuTime;
 
 
@@ -66,7 +68,7 @@ int main()
 			if (input == L'q' || input == L'Q')
 			{
 
-				g_server.Stop();
+				g_chatServer.Stop();
 
 				break;
 			}
@@ -76,16 +78,9 @@ int main()
 
 		Sleep(1000);
 
-		unsigned int message_tps = InterlockedExchange(&g_message_tps, 0);
 
-		g_server.Show();
-		wprintf(L"Connect : %d\n"
-			L"Login : %d\n"
-			L"Duplicated login proc : %d\n"
-			L"Message TPS : %d\n"
-			L"Running WorkerThread : %d\n",
-			g_connect_cnt, g_login_cnt, g_duplicate_login, message_tps, g_running_worker);
-
+		g_chatServer.Show();
+		
 		CpuTime.Show();
 	}
 

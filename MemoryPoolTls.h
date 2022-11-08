@@ -7,6 +7,17 @@
 #include "LockFreeQueue.h"
 #include "LockFreeStack.h"
 
+
+
+/// <summary>
+/// 멀티 스레드 세이프한 메모리(오브젝트)풀
+/// 각 스레드는 청크 단위로 노드를 관리함.
+/// 생성자 첫번째 인자는 청크의 기본 크기
+///        두번째 인자는 true일 경우 노드의 할당, 반환시 생성자, 소멸자 호출 
+///						 false일 경우 메모리풀 생성과 소멸시에만 노드 생성자 소멸자 호출됨.
+/// 
+/// </summary>
+/// <typeparam name="DATA"></typeparam>
 template <class DATA>
 class MemoryPoolTls
 {
@@ -155,7 +166,6 @@ class MemoryPoolTls
 
 public:
 
-
 	MemoryPoolTls(int _default_size = DEFAULT_SIZE, bool _placement_new = false)
 	{
 		tls_index = TlsAlloc();
@@ -294,5 +304,4 @@ private:
 	alignas(64) int tls_index;
 	bool placement_new;
 	int default_size;
-	int a = 0;
 };

@@ -138,8 +138,9 @@ LockFreePool<DATA>::LockFreePool(int _capacity, bool _free_list)
 template<class DATA>
 LockFreePool<DATA>::~LockFreePool()
 {
-	// 반환 안된 노드는 포기.. 어차피 전역에 놓고 쓸거라 
-	// 소멸 시점은 프로그램 종료 때
+	// 반환 안된 노드 누수됨. 추후 해결
+	// 1. 할당 시 따로 저장해둔 뒤에 반환하는 방법
+	// 2. VirtualAlloc 활용해서 풀의 노드 한꺼번에 정리
 	BLOCK_NODE* top_addr = (BLOCK_NODE*)((unsigned long long)top & dfADDRESS_MASK);
 	BLOCK_NODE* temp;
 
