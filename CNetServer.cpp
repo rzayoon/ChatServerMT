@@ -718,83 +718,84 @@ inline void CNetServer::SendPost(Session* session)
 			long long buf_cnt = session->send_q.GetSize();
 			if (buf_cnt <= 0)
 			{
-				CrashDump::Crash();
 				log_arr[8]++;
 				session->send_flag = false;
-				return;
-			}
-			int temp_io = InterlockedIncrement((LONG*)&session->io_count);
-			int retval;
-
-			ZeroMemory(&session->send_overlapped, sizeof(session->send_overlapped));
-
-			// 개선 필요
-			if (buf_cnt > MAX_WSABUF)
-				buf_cnt = MAX_WSABUF;
-
-			WSABUF wsabuf[MAX_WSABUF];
-			ZeroMemory(wsabuf, sizeof(wsabuf));
-
-#ifdef AUTO_PACKET
-			PacketPtr packet;
-			for (int cnt = 0; cnt < buf_cnt;)
-			{
-				if (session->send_q.Dequeue(&packet) == false) continue;
-
-
-				wsabuf[cnt].buf = (*packet)->GetBufferPtrNet();
-				wsabuf[cnt].len = (*packet)->GetDataSizeNet();
-				session->temp_packet[cnt] = packet;
-
-				++cnt;
-			}
-#else
-			CPacket* packet;
-			for (int cnt = 0; cnt < buf_cnt;)
-			{
-				if (!session->send_q.Dequeue(&packet)) continue;
-
-				wsabuf[cnt].buf = packet->GetBufferPtrNet();
-				wsabuf[cnt].len = packet->GetDataSizeNet();
-				session->temp_packet[cnt] = packet;
-
-				++cnt;
-			}
-#endif
-
-			session->send_packet_cnt = buf_cnt;
-			DWORD sendbytes;
-			monitor.IncSend();
-
-			SOCKET socket = session->sock;
-			session->send_sock = socket;
-			QueryPerformanceCounter(&session->send_time);
-			retval = WSASend(socket, wsabuf, buf_cnt, NULL, 0, &session->send_overlapped, NULL);
-			QueryPerformanceCounter(&end);
-			monitor.AddSendTime(&session->send_time, &end);
-
-			DWORD error_code;
-			if (retval == SOCKET_ERROR)
-			{
-				if ((error_code = WSAGetLastError()) != WSA_IO_PENDING) // 요청 자체가 실패
-				{
-					// 내가 release 시켜야하는 경우 Packet 해제 해줘야 함
-					Disconnect(session);
-					int io_temp = UpdateIOCount(session);
-					tracer.trace(2, session, error_code, socket);
-					session->pending_tracer.trace(11, error_code, socket, GetTickCount64());
-				}
-				else
-				{
-					//tracer.trace(72, session, socket);
-					// Pending
-					session->pending_tracer.trace(12, error_code, socket, GetTickCount64());
-				}
 			}
 			else
 			{
-				//동기처리
-				session->pending_tracer.trace(13, 0, socket, GetTickCount64());
+				int temp_io = InterlockedIncrement((LONG*)&session->io_count);
+				int retval;
+
+				ZeroMemory(&session->send_overlapped, sizeof(session->send_overlapped));
+
+				// 개선 필요
+				if (buf_cnt > MAX_WSABUF)
+					buf_cnt = MAX_WSABUF;
+
+				WSABUF wsabuf[MAX_WSABUF];
+				ZeroMemory(wsabuf, sizeof(wsabuf));
+
+#ifdef AUTO_PACKET
+				PacketPtr packet;
+				for (int cnt = 0; cnt < buf_cnt;)
+				{
+					if (session->send_q.Dequeue(&packet) == false) continue;
+
+
+					wsabuf[cnt].buf = (*packet)->GetBufferPtrNet();
+					wsabuf[cnt].len = (*packet)->GetDataSizeNet();
+					session->temp_packet[cnt] = packet;
+
+					++cnt;
+				}
+#else
+				CPacket* packet;
+				for (int cnt = 0; cnt < buf_cnt;)
+				{
+					if (!session->send_q.Dequeue(&packet)) continue;
+
+					wsabuf[cnt].buf = packet->GetBufferPtrNet();
+					wsabuf[cnt].len = packet->GetDataSizeNet();
+					session->temp_packet[cnt] = packet;
+
+					++cnt;
+				}
+#endif
+
+				session->send_packet_cnt = buf_cnt;
+				DWORD sendbytes;
+				monitor.IncSend();
+
+				SOCKET socket = session->sock;
+				session->send_sock = socket;
+				QueryPerformanceCounter(&session->send_time);
+				retval = WSASend(socket, wsabuf, buf_cnt, NULL, 0, &session->send_overlapped, NULL);
+				QueryPerformanceCounter(&end);
+				monitor.AddSendTime(&session->send_time, &end);
+
+				DWORD error_code;
+				if (retval == SOCKET_ERROR)
+				{
+					if ((error_code = WSAGetLastError()) != WSA_IO_PENDING) // 요청 자체가 실패
+					{
+						// 내가 release 시켜야하는 경우 Packet 해제 해줘야 함
+						Disconnect(session);
+						int io_temp = UpdateIOCount(session);
+						tracer.trace(2, session, error_code, socket);
+						session->pending_tracer.trace(11, error_code, socket, GetTickCount64());
+					}
+					else
+					{
+						//tracer.trace(72, session, socket);
+						// Pending
+						session->pending_tracer.trace(12, error_code, socket, GetTickCount64());
+					}
+				}
+				else
+				{
+					//동기처리
+					session->pending_tracer.trace(13, 0, socket, GetTickCount64());
+				}
 			}
 		}
 	}
