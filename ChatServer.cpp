@@ -21,6 +21,8 @@ ChatServer::ChatServer()
 
 	InitSector();
 
+	m_maxUser = 15000;
+
 	m_connectCnt = 0;
 	m_loginCnt = 0;
 	m_duplicateLogin = 0;
@@ -91,19 +93,25 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 	{
 	case en_PACKET_CS_CHAT_REQ_LOGIN:
 	{
+#ifdef dfTRACE_CHAT
 		m_chatTracer.trace(10, (PVOID)user->session_id, GetTickCount64());
+#endif
 		result_proc = PacketProcessor::ProcLogin(user, packet);
 		break;
 	}
 	case en_PACKET_CS_CHAT_REQ_SECTOR_MOVE:
 	{
+#ifdef dfTRACE_CHAT
 		m_chatTracer.trace(11, (PVOID)user->session_id, GetTickCount64());
+#endif
 		result_proc = PacketProcessor::ProcSectorMove(user, packet);
 		break;
 	}
 	case en_PACKET_CS_CHAT_REQ_MESSAGE:
 	{
+#ifdef dfTRACE_CHAT
 		m_chatTracer.trace(12, (PVOID)user->session_id, GetTickCount64());
+#endif
 		result_proc = PacketProcessor::ProcMessage(user, packet);
 		break;
 	}
@@ -204,9 +212,9 @@ void ChatServer::CreateUser(SS_ID s_id)
 	user->sector_y = -1;
 	user->last_recv_time = GetTickCount64();
 
-
+#ifdef dfTRACE_CHAT
 	m_chatTracer.trace(1, (PVOID)user->session_id, GetTickCount64());
-
+#endif
 	// 추가
 	EnterCriticalSection(&m_userMapCS[idx]);
 	if (m_userMap[idx].find(s_id) != m_userMap[idx].end())
@@ -227,9 +235,9 @@ void ChatServer::DeleteUser(SS_ID s_id)
 {
 	User* user;
 	int idx = s_id % dfUSER_MAP_HASH;
-
+#ifdef dfTRACE_CHAT
 	m_chatTracer.trace(2, (PVOID)s_id, GetTickCount64());
-
+#endif
 	EnterCriticalSection(&m_userMapCS[idx]);
 	auto iter = m_userMap[idx].find(s_id);
 	if (iter == m_userMap[idx].end())
@@ -243,20 +251,19 @@ void ChatServer::DeleteUser(SS_ID s_id)
 	user->Lock();
 	if (user->session_id != s_id)
 	{
-		user->Unlock();
-		return;
+		CrashDump::Crash();
 	}
 
 	if (user->is_in_sector)
 	{
+		AcquireSRWLockExclusive(&g_SectorLock[user->sector_y][user->sector_x]);
 		Sector_RemoveUser(user);
+		ReleaseSRWLockExclusive(&g_SectorLock[user->sector_y][user->sector_x]);
 		user->is_in_sector = false;
 	}
 
 	user->sector_x = SECTOR_MAX_X;
 	user->sector_y = SECTOR_MAX_Y;
-
-
 
 
 	if (user->is_login) {
@@ -287,16 +294,22 @@ void ChatServer::SendMessageUni(CPacket* packet, User* user)
 	return;
 }
 
-void ChatServer::SendMessageSector(CPacket* packet, int sector_x, int sector_y)
+void ChatServer::SendMessageSector(CPacket* packet, int sector_x, int sector_y, User* user)
 {
 	list<User*>& sector = g_SectorList[sector_y][sector_x];
-	User* user;
+	User* target_user;
 
 	for (auto iter = sector.begin(); iter != sector.end();)
 	{
-		user = (*iter);
+		target_user = (*iter);
 		++iter;  // 삭제 가능성 있으므로 미리 옮겨둠
-		SendMessageUni(packet, user);
+		if (user != target_user) {
+			SendMessageUni(packet, target_user);
+		}
+		else
+		{
+			SendMessageUni(packet, target_user);
+		}
 	}
 
 	return;
@@ -315,7 +328,7 @@ void ChatServer::SendMessageAround(CPacket* packet, User* user)
 
 	for (cnt = 0; cnt < sect_around.count; cnt++)
 	{
-		SendMessageSector(packet, sect_around.around[cnt].x, sect_around.around[cnt].y);
+		SendMessageSector(packet, sect_around.around[cnt].x, sect_around.around[cnt].y, user);
 	}
 
 	UnlockSectorAround(&sect_around);

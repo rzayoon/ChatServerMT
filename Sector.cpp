@@ -5,7 +5,7 @@
 #include "CrashDump.h"
 
 list<User*> g_SectorList[SECTOR_MAX_Y][SECTOR_MAX_X];
-CRITICAL_SECTION g_SectorLock[SECTOR_MAX_Y][SECTOR_MAX_X];
+SRWLOCK g_SectorLock[SECTOR_MAX_Y][SECTOR_MAX_X];
 
 
 void Sector_AddUser(User* user)
@@ -15,9 +15,7 @@ void Sector_AddUser(User* user)
 
 	unsigned short sector_y(user->sector_y), sector_x(user->sector_x);
 
-	LockSector(sector_y, sector_x);
 	g_SectorList[sector_y][sector_x].push_back(user);
-	UnlockSector(sector_y, sector_x);
 
 	user->is_in_sector = true;
 
@@ -32,7 +30,6 @@ void Sector_RemoveUser(User* user)
 	int sector_y = user->sector_y;
 	int sector_x = user->sector_x;
 
-	LockSector(sector_y, sector_x);
 	list<User*>& sector = g_SectorList[sector_y][sector_x];
 
 	for (auto iter = sector.begin(); iter != sector.end(); ++iter)
@@ -45,7 +42,6 @@ void Sector_RemoveUser(User* user)
 
 
 	}
-	UnlockSector(sector_y, sector_x);
 
 	user->is_in_sector = false;
 
@@ -89,7 +85,7 @@ void LockSectorAround(const SectorAround* sector_around)
 {
 	for (int cnt = 0; cnt < sector_around->count; cnt++)
 	{
-		LockSector(sector_around->around[cnt].y, sector_around->around[cnt].x);
+		AcquireSRWLockShared(&g_SectorLock[sector_around->around[cnt].y][sector_around->around[cnt].x]);
 	}
 
 	return;
@@ -99,7 +95,7 @@ void UnlockSectorAround(const SectorAround* sector_around)
 {
 	for (int cnt = 0; cnt < sector_around->count; cnt++)
 	{
-		UnlockSector(sector_around->around[cnt].y, sector_around->around[cnt].x);
+		ReleaseSRWLockShared(&g_SectorLock[sector_around->around[cnt].y][sector_around->around[cnt].x]);
 	}
 
 	return;
@@ -109,29 +105,29 @@ void InitSector()
 {
 	for (int i = 0; i < SECTOR_MAX_Y; i++)
 		for (int j = 0; j < SECTOR_MAX_X; j++)
-			InitializeCriticalSection(&g_SectorLock[i][j]);
+			InitializeSRWLock(&g_SectorLock[i][j]);
 
 	return;
 }
 
 void ReleaseSector()
 {
-	for (int i = 0; i < SECTOR_MAX_Y; i++)
+	/*for (int i = 0; i < SECTOR_MAX_Y; i++)
 		for (int j = 0; j < SECTOR_MAX_X; j++)
-			DeleteCriticalSection(&g_SectorLock[i][j]);
+			DeleteCriticalSection(&g_SectorLock[i][j]);*/
 
 	return;
 }
 
-void LockSector(const unsigned short y, const unsigned short x)
-{
-	EnterCriticalSection(&g_SectorLock[y][x]);
-	return;
-}
-
-void UnlockSector(const unsigned short y, const unsigned short x)
-{
-	LeaveCriticalSection(&g_SectorLock[y][x]);
-	return;
-}
+//void LockExclusiveSector(const unsigned short y, const unsigned short x)
+//{
+//	EnterCriticalSection(&g_SectorLock[y][x]);
+//	return;
+//}
+//
+//void UnlockSector(const unsigned short y, const unsigned short x)
+//{
+//	LeaveCriticalSection(&g_SectorLock[y][x]);
+//	return;
+//}
 

@@ -52,7 +52,7 @@ public:
 	/// <returns>실패 시 false 반환</returns>
 	bool Start(
 		const wchar_t* ip, unsigned short port, 
-		int iocp_worker, int iocp_active, int max_session, int max_user, 
+		int iocp_worker, int iocp_active, int max_session, bool nagle, 
 		unsigned char packet_key, unsigned char packet_code);
 
 	/// <summary>
@@ -186,7 +186,9 @@ private:
 	unsigned int m_sess_id = 1;
 	
 	Monitor monitor;
+#ifdef TRACE_SERVER
 	Tracer tracer;
+#endif
 
 	alignas(64) int m_sessionCnt = 0;
 };

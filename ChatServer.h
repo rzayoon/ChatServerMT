@@ -9,6 +9,7 @@ using std::unordered_map;
 
 #define dfUSER_MAP_HASH 1
 
+//#define dfTRACE_CHAT
 
 class ChatServer : public CNetServer
 {
@@ -33,9 +34,6 @@ private:
 
 	void OnError(int errorcode, const wchar_t* msg);
 
-public:
-
-	alignas(64) LONG runningWorker;
 
 private:
 
@@ -45,13 +43,17 @@ private:
 	void DeleteUser(SS_ID s_id);
 
 	void SendMessageUni(CPacket* packet, User* user);
-	void SendMessageSector(CPacket* packet, int sector_x, int sector_y);
+	void SendMessageSector(CPacket* packet, int sector_x, int sector_y, User* user);
 	void SendMessageAround(CPacket* packet, User* user);
 
 	MemoryPoolTls<User> m_userPool;
 
 	unordered_map<SS_ID, User*> m_userMap[dfUSER_MAP_HASH];
 	CRITICAL_SECTION m_userMapCS[dfUSER_MAP_HASH];
+	
+public:
+
+	alignas(64) LONG runningWorker;
 
 private:
 
@@ -59,9 +61,9 @@ private:
 	alignas(64) unsigned int m_loginCnt;
 	alignas(64) unsigned int m_duplicateLogin;
 	alignas(64) unsigned int m_messageTps;
-
+#ifdef dfTRACE_CHAT
 	Tracer m_chatTracer;
-
+#endif
 public:
 	void Show();
 };

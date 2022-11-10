@@ -189,7 +189,7 @@ void Monitor::Show(int session_cnt, int packet_pool, int job_queue)
 		L" > Packet avg : %.1lf\n"
 		L"SendToComp avg : %.2lf us\n"
 		L"RECV/sec : %d\n"
-		L"OnRecv/sec : %d\n"
+		L"RecvPacket/sec : %d\n"
 		L"Recv Completion : %.2lf us\n"
 		L" > OnRecv : %.2lf us\n"
 		L"Total WSASend Time : %.2lf us\n"

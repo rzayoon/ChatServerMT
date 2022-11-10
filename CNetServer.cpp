@@ -15,7 +15,7 @@ long long packet_counter[101];
 int log_arr[100];
 
 bool CNetServer::Start(const wchar_t* ip, unsigned short port,
-	int iocpWorker, int iocpActive, int maxSession, int maxUser,
+	int iocpWorker, int iocpActive, int maxSession, bool nagle,
 	unsigned char packetKey, unsigned char packetCode)
 {
 	if (m_isRunning)
@@ -24,10 +24,9 @@ bool CNetServer::Start(const wchar_t* ip, unsigned short port,
 		return false;
 	}
 
-	m_nagle = true;
+	m_nagle = nagle;
 
 	m_maxSession = maxSession;
-	m_maxUser = maxUser;
 	wcscpy_s(m_ip, ip);
 	m_port = port;
 
@@ -40,12 +39,6 @@ bool CNetServer::Start(const wchar_t* ip, unsigned short port,
 	CPacket::SetPacketCode(m_packetCode);
 	CPacket::SetPacketKey(m_packetKey);
 
-	m_sessionArr = new Session[m_maxSession];
-
-#ifdef STACK_INDEX
-	for (int i = m_maxSession - 1; i >= 0; i--)
-		empty_session_stack.Push(i);
-#endif
 
 
 	// WinSock 초기화
@@ -65,7 +58,7 @@ bool CNetServer::Start(const wchar_t* ip, unsigned short port,
 	}
 
 	// Accept Thread 생성
-	m_hAcceptThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)AcceptThread, this, 0, NULL);
+	m_hAcceptThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)AcceptThread, this, CREATE_SUSPENDED, NULL);
 	if (m_hAcceptThread == NULL)
 	{
 		OnError(3, L"Create Thread Failed\n");
@@ -76,7 +69,7 @@ bool CNetServer::Start(const wchar_t* ip, unsigned short port,
 	m_hWorkerThread = new HANDLE[m_iocpWorkerNum];
 	for (int i = 0; i < m_iocpWorkerNum; i++)
 	{
-		m_hWorkerThread[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)IoThread, this, 0, NULL);
+		m_hWorkerThread[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)IoThread, this, CREATE_SUSPENDED, NULL);
 		if (m_hWorkerThread[i] == NULL)
 		{
 			OnError(3, L"Create Thread Failed\n");
@@ -84,7 +77,20 @@ bool CNetServer::Start(const wchar_t* ip, unsigned short port,
 		}
 	}
 
+
+	m_sessionArr = new Session[m_maxSession];
+
+#ifdef STACK_INDEX
+	for (int i = m_maxSession - 1; i >= 0; i--)
+		empty_session_stack.Push(i);
+#endif
 	
+	ResumeThread(m_hAcceptThread);
+	for (int i = 0; i < m_iocpWorkerNum; i++)
+	{
+		ResumeThread(m_hWorkerThread[i]);
+	}
+
 	m_isRunning = true;
 
 	return true;
@@ -255,8 +261,9 @@ inline void CNetServer::RunAcceptThread()
 		}
 		InetNtopW(AF_INET, &clientAddr.sin_addr, temp_ip, _countof(temp_ip));
 		temp_port = ntohs(clientAddr.sin_port);
-
+#ifdef TRACE_SERVER
 		tracer.trace(70, 0, clientSock);
+#endif
 		monitor.IncAccept();
 
 		if (OnConnectionRequest(temp_ip, temp_port))
@@ -360,15 +367,19 @@ inline void CNetServer::RunIoThread()
 		{
 			//에러코드 로깅
 			error_code = GetLastError();
+#ifdef TRACE_SERVER
 			if (error_code != ERROR_NETNAME_DELETED)
 				tracer.trace(00, session, error_code);
+#endif
 		}
 
 		session->ref_time = GetTickCount64();
 
 		if (cbTransferred == 0 || session->disconnect) // Pending 후 I/O 처리 실패
 		{
+#ifdef TRACE_SERVER
 			tracer.trace(78, session, session->session_id);
+#endif
 			if (!session->disconnect)
 			{
 				Disconnect(session);
@@ -545,6 +556,8 @@ bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 	unsigned short idx = session_id >> INDEX_BIT_SHIFT;
 	unsigned int id = session_id & ID_MASK;
 
+	if (idx >= m_maxSession)
+		CrashDump::Crash();
 
 #ifndef STACK_INDEX
 
@@ -597,6 +610,9 @@ inline void CNetServer::DisconnectSession(unsigned long long session_id)
 {
 	unsigned short idx = session_id >> INDEX_BIT_SHIFT;
 	unsigned int id = session_id & ID_MASK;
+
+	if (idx >= m_maxSession)
+		CrashDump::Crash();
 
 #ifndef STACK_INDEX
 
@@ -681,7 +697,9 @@ inline bool CNetServer::RecvPost(Session* session)
 			{ // 요청이 실패
 				Disconnect(session); // 항상? 10054 일 때만?? 
 				int io_temp = UpdateIOCount(session);
+#ifdef TRACE_SERVER
 				tracer.trace(1, session, error_code, socket);
+#endif
 				session->pending_tracer.trace(1, error_code, socket, GetTickCount64());
 			}
 			else
@@ -779,9 +797,11 @@ inline void CNetServer::SendPost(Session* session)
 					if ((error_code = WSAGetLastError()) != WSA_IO_PENDING) // 요청 자체가 실패
 					{
 						// 내가 release 시켜야하는 경우 Packet 해제 해줘야 함
-						Disconnect(session);
+						//Disconnect(session);
 						int io_temp = UpdateIOCount(session);
+#ifdef TRACE_SERVER
 						tracer.trace(2, session, error_code, socket);
+#endif
 						session->pending_tracer.trace(11, error_code, socket, GetTickCount64());
 					}
 					else
@@ -858,8 +878,9 @@ inline void CNetServer::ReleaseSession(Session* session)
 	{
 		if (InterlockedCompareExchange64((LONG64*)&session->io_count, 0x100000000, flag) == flag)
 		{
-
+#ifdef TRACE_SERVER
 			tracer.trace(75, session, session->session_id, session->sock);
+#endif
 			session->pending_tracer.trace(99, session->sock);
 
 			if (session->disconnect != 2) CrashDump::Crash(); // pending 있는 상태에서 삭제 여부

@@ -53,7 +53,7 @@ int main()
 
 	
 
-	g_chatServer.Start(wip, port, worker, max_worker, max_session, max_user, packet_key, packet_code);
+	g_chatServer.Start(wip, port, worker, max_worker, max_session, 1, packet_key, packet_code);
 	CCpuUsage CpuTime;
 
 
@@ -87,7 +87,7 @@ int main()
 	timeEndPeriod(1);
 
 	wprintf(L"Fine Closing\n");
-	Sleep(5000);
+	Sleep(2000);
 
 
 	return 0;

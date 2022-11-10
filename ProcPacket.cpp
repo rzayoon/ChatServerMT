@@ -30,7 +30,6 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 	if (user->is_login == true)
 	{
 		// 같은 세션id에서 중복 로그인 메시지
-		g_chatServer.m_chatTracer.trace(20, (PVOID)user->session_id, GetTickCount64());
 
 		CrashDump::Crash();
 
@@ -63,7 +62,6 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 			if (temp_user->account_no == account_no)
 			{
 				// 다른 세션 id에서 account no 중복 로그인
-				g_chatServer.m_chatTracer.trace(21, (PVOID)user->session_id, GetTickCount64());
 
 				ULONGLONG t = GetTickCount64();
 
@@ -133,25 +131,29 @@ bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 		return false;
 	}
 
+	
+
 	// todo SectorMove 함수화 하기
 	WORD lock_y[2];
 	WORD lock_x[2];
-	int lock_cnt;
+	int lock_cnt = 1;
 
 	if (!user->is_in_sector)
 	{
 		lock_y[0] = sector_y;
 		lock_x[0] = sector_x;
-		lock_cnt = 1;
 	}
 	else
 	{
+		
 		if (user->sector_y < sector_y)
 		{
 			lock_y[0] = user->sector_y;
 			lock_x[0] = user->sector_x;
 			lock_y[1] = sector_y;
 			lock_x[1] = sector_x;
+
+			lock_cnt++;
 		}
 		else if (user->sector_y > sector_y)
 		{
@@ -159,45 +161,48 @@ bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 			lock_x[0] = sector_x;
 			lock_y[1] = user->sector_y;
 			lock_x[1] = user->sector_x;
+
+			lock_cnt++;
 		}
 		else // y 같음
 		{
-			if (user->sector_x <= sector_x)
+			if (user->sector_x < sector_x)
 			{
 				lock_y[0] = user->sector_y;
 				lock_x[0] = user->sector_x;
 				lock_y[1] = sector_y;
 				lock_x[1] = sector_x;
+
+				lock_cnt++;
 			}
-			else
+			else if(user->sector_x > sector_x)
 			{
 				lock_y[0] = sector_y;
 				lock_x[0] = sector_x;
 				lock_y[1] = user->sector_y;
 				lock_x[1] = user->sector_x;
+
+				lock_cnt++;
 			}
 		}
-
-
-		lock_cnt = 2;
 	}
 
 	for (int i = 0; i < lock_cnt; i++)
 	{
-		LockSector(lock_y[i], lock_x[i]);
+		AcquireSRWLockExclusive(&g_SectorLock[lock_y[i]][lock_x[i]]);
 	}
 
 	if(user->is_in_sector)
 		Sector_RemoveUser(user);
 
-	user->sector_x = sector_x; 
+	user->sector_x = sector_x;
 	user->sector_y = sector_y;
 
 	Sector_AddUser(user);
 
 	for (int i = 0; i < lock_cnt; i++)
 	{
-		UnlockSector(lock_y[i], lock_x[i]);
+		ReleaseSRWLockExclusive(&g_SectorLock[lock_y[i]][lock_x[i]]);
 	}
 
 	CPacket* send_packet = CPacket::Alloc();

@@ -48,6 +48,8 @@ void GetSectorAround(int sector_x, int sector_y, SectorAround* sector_around);
 /// </summary>
 /// <param name="sector_around"></param>
 void LockSectorAround(const SectorAround* sector_around);
+
+
 /// <summary>
 /// 주변 섹터 Lock 반환
 /// </summary>
@@ -57,9 +59,9 @@ void UnlockSectorAround(const SectorAround* sector_around);
 
 void InitSector();
 void ReleaseSector();
-void LockSector(const unsigned short y, const unsigned short x);
-void UnlockSector(const unsigned short y, const unsigned short x);
+//void LockSector(const unsigned short y, const unsigned short x);
+//void UnlockSector(const unsigned short y, const unsigned short x);
 
 
 extern list<User*> g_SectorList[SECTOR_MAX_Y][SECTOR_MAX_X];
-extern CRITICAL_SECTION g_SectorLock[SECTOR_MAX_Y][SECTOR_MAX_X];
+extern SRWLOCK g_SectorLock[SECTOR_MAX_Y][SECTOR_MAX_X];
