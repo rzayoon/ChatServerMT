@@ -1,8 +1,12 @@
 #include <thread>
 #include <utility>
 #include <unordered_map>
+using std::unordered_map;
 
+#include "CNetServer.h"
+#include "User.h"
 #include "MemoryPoolTls.h"
+
 #include "ChatServer.h"
 #include "CommonProtocol.h"
 #include "ProcPacket.h"
@@ -17,7 +21,7 @@
 ChatServer::ChatServer()
 {
 	for(int i = 0; i < dfUSER_MAP_HASH; i++)
-		InitializeCriticalSection(&m_userMapCS[i]);
+		InitializeSRWLock(&m_userMapCS[i]);
 
 	InitSector();
 
@@ -34,8 +38,8 @@ ChatServer::ChatServer()
 
 ChatServer::~ChatServer()
 {
-	for (int i = 0; i < dfUSER_MAP_HASH; i++)
-		DeleteCriticalSection(&m_userMapCS[i]);
+	/*for (int i = 0; i < dfUSER_MAP_HASH; i++)
+		DeleteCriticalSection(&m_userMapCS[i]);*/
 	ReleaseSector();
 
 }
@@ -127,11 +131,11 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 	}
 
 	}
+	ReleaseUser(user);
 
 	if (!result_proc) 
 		DisconnectSession(user->session_id);
 
-	ReleaseUser(user);
 	InterlockedIncrement(&m_messageTps);
 
 	return;
@@ -175,14 +179,14 @@ bool ChatServer::AcquireUser(SS_ID s_id, User** user)
 
 	unsigned int idx = s_id % dfUSER_MAP_HASH;
 
-	EnterCriticalSection(&m_userMapCS[idx]);
+	AcquireSRWLockShared(&m_userMapCS[idx]);
 	auto iter = m_userMap[idx].find(s_id);
 	if (iter == m_userMap[idx].end())
 		CrashDump::Crash();
 	*user = iter->second;
 	(*user)->Lock();
 
-	LeaveCriticalSection(&m_userMapCS[idx]);
+	ReleaseSRWLockShared(&m_userMapCS[idx]);
 
 
 	return true;
@@ -216,12 +220,12 @@ void ChatServer::CreateUser(SS_ID s_id)
 	m_chatTracer.trace(1, (PVOID)user->session_id, GetTickCount64());
 #endif
 	// Ãß°¡
-	EnterCriticalSection(&m_userMapCS[idx]);
+	AcquireSRWLockExclusive(&m_userMapCS[idx]);
 	if (m_userMap[idx].find(s_id) != m_userMap[idx].end())
 		CrashDump::Crash();
 
 	m_userMap[idx][s_id] = user;
-	LeaveCriticalSection(&m_userMapCS[idx]);
+	ReleaseSRWLockExclusive(&m_userMapCS[idx]);
 
 	user->Unlock();
 
@@ -238,7 +242,7 @@ void ChatServer::DeleteUser(SS_ID s_id)
 #ifdef dfTRACE_CHAT
 	m_chatTracer.trace(2, (PVOID)s_id, GetTickCount64());
 #endif
-	EnterCriticalSection(&m_userMapCS[idx]);
+	AcquireSRWLockExclusive(&m_userMapCS[idx]);
 	auto iter = m_userMap[idx].find(s_id);
 	if (iter == m_userMap[idx].end())
 		CrashDump::Crash();
@@ -246,7 +250,7 @@ void ChatServer::DeleteUser(SS_ID s_id)
 
 
 	m_userMap[idx].erase(s_id);
-	LeaveCriticalSection(&m_userMapCS[idx]);
+	ReleaseSRWLockExclusive(&m_userMapCS[idx]);
 
 	user->Lock();
 	if (user->session_id != s_id)

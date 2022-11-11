@@ -298,7 +298,9 @@ inline void CNetServer::RunAcceptThread()
 
 			InterlockedIncrement((LONG*)&session->io_count);
 
+#ifdef TRACE_SESSION
 			session->pending_tracer.trace(8, clientSock);
+#endif
 			session->session_id = m_sess_id++;
 			if (m_sess_id == 0) m_sess_id++;
 			*(unsigned*)&session->session_index = index;
@@ -573,7 +575,9 @@ bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 
 	InterlockedIncrement((LONG*)&session->io_count);
 	session->send_packet_time = GetTickCount64();
+#ifdef TRACE_SESSION
 	session->pending_tracer.trace(7, 0, GetTickCount64());
+#endif
 	if (session->release_flag == 0 && !session->disconnect)
 	{
 		if (session->session_id == id)
@@ -645,7 +649,9 @@ inline void CNetServer::Disconnect(Session* session)
 	if (session->disconnect == 0)
 	{
 		if (InterlockedCompareExchange((LONG*)&session->disconnect, true, false) == false) {
+#ifdef TRACE_SESSION
 			session->pending_tracer.trace(0, session->sock, GetTickCount64());
+#endif
 			// pending cnt == 0 이면 cancel IO 
 			OnClientLeave(*(unsigned long long*) & session->session_id);
 			CancelIOSession(session);
@@ -695,24 +701,30 @@ inline bool CNetServer::RecvPost(Session* session)
 		{
 			if ((error_code = WSAGetLastError()) != ERROR_IO_PENDING)
 			{ // 요청이 실패
-				Disconnect(session); // 항상? 10054 일 때만?? 
+				Disconnect(session); 
 				int io_temp = UpdateIOCount(session);
 #ifdef TRACE_SERVER
 				tracer.trace(1, session, error_code, socket);
 #endif
+#ifdef TRACE_SESSION
 				session->pending_tracer.trace(1, error_code, socket, GetTickCount64());
+#endif
 			}
 			else
 			{
 				//tracer.trace(73, session, socket);
 				// Pending
+#ifdef TRACE_SESSION
 				session->pending_tracer.trace(2, error_code, socket, GetTickCount64());
+#endif
 				ret = true;
 			}
 		}
 		else
 		{
+#ifdef TRACE_SESSION
 			session->pending_tracer.trace(3, 0, socket, GetTickCount64());
+#endif
 			//tracer.trace(73, session, socket);
 			//동기 recv
 			ret = true;
@@ -802,19 +814,25 @@ inline void CNetServer::SendPost(Session* session)
 #ifdef TRACE_SERVER
 						tracer.trace(2, session, error_code, socket);
 #endif
+#ifdef TRACE_SESSION
 						session->pending_tracer.trace(11, error_code, socket, GetTickCount64());
+#endif
 					}
 					else
 					{
 						//tracer.trace(72, session, socket);
 						// Pending
+#ifdef TRACE_SESSION
 						session->pending_tracer.trace(12, error_code, socket, GetTickCount64());
+#endif
 					}
 				}
 				else
 				{
 					//동기처리
+#ifdef TRACE_SESSION
 					session->pending_tracer.trace(13, 0, socket, GetTickCount64());
+#endif
 				}
 			}
 		}
@@ -861,7 +879,10 @@ void CNetServer::CancelIOSession(Session* session)
 	{
 		if (InterlockedCompareExchange64((LONG64*)&session->pend_count, 0x200000000, flag) == flag)
 		{
+#ifdef TRACE_SESSION
 			session->pending_tracer.trace(9, session->sock, GetTickCount64());
+#endif
+			
 			CancelIoEx((HANDLE)session->sock, NULL);
 		}
 	}
@@ -881,7 +902,9 @@ inline void CNetServer::ReleaseSession(Session* session)
 #ifdef TRACE_SERVER
 			tracer.trace(75, session, session->session_id, session->sock);
 #endif
+#ifdef TRACE_SESSION
 			session->pending_tracer.trace(99, session->sock);
+#endif
 
 			if (session->disconnect != 2) CrashDump::Crash(); // pending 있는 상태에서 삭제 여부
 			

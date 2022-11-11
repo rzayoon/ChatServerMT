@@ -9,6 +9,13 @@
 #include <stdio.h>
 #include <conio.h>
 
+#include <unordered_map>
+using std::unordered_map;
+
+#include "CNetServer.h"
+#include "User.h"
+#include "MemoryPoolTls.h"
+
 #include "ChatServer.h"
 #include "TextParser.h"
 #include "ProfileTls.h"

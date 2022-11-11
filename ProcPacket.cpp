@@ -1,6 +1,10 @@
 #include <unordered_map>
 using std::unordered_map;
 
+#include "CNetServer.h"
+#include "User.h"
+#include "MemoryPoolTls.h"
+
 #include "ChatServer.h"
 #include "ProcPacket.h"
 #include "PacketMaker.h"
@@ -50,7 +54,7 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 
 	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
 	{
-		EnterCriticalSection(&g_chatServer.m_userMapCS[iCnt]);
+		AcquireSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);
 	}
 
 	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
@@ -88,7 +92,7 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 		
 	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
 	{
-		LeaveCriticalSection(&g_chatServer.m_userMapCS[iCnt]);
+		ReleaseSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);
 	}
 
 	InterlockedDecrement(&g_chatServer.m_connectCnt);
@@ -183,6 +187,12 @@ bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 				lock_x[1] = user->sector_x;
 
 				lock_cnt++;
+			}
+			else
+			{
+				lock_y[0] = sector_y;
+				lock_x[0] = sector_x;
+
 			}
 		}
 	}

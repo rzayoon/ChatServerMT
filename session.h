@@ -5,6 +5,8 @@
 #include "LockFreeQueue.h"
 #include "Tracer.h"
 
+//#define TRACE_SESSION
+
 class alignas(64) Session
 {
 public:
@@ -51,7 +53,10 @@ public:
 	wchar_t ip[16];
 	unsigned short port;
 	CRITICAL_SECTION session_cs;
+
+#ifdef TRACE_SESSION
 	MiniTracer pending_tracer;
+#endif
 
 #ifdef AUTO_PACKET
 	PacketPtr temp_packet[200];

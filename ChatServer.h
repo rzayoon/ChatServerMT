@@ -1,11 +1,8 @@
 #pragma once
 
-#include <unordered_map>
-using std::unordered_map;
 
-#include "CNetServer.h"
-#include "User.h"
-#include "MemoryPoolTls.h"
+
+
 
 #define dfUSER_MAP_HASH 1
 
@@ -49,7 +46,7 @@ private:
 	MemoryPoolTls<User> m_userPool;
 
 	unordered_map<SS_ID, User*> m_userMap[dfUSER_MAP_HASH];
-	CRITICAL_SECTION m_userMapCS[dfUSER_MAP_HASH];
+	SRWLOCK m_userMapCS[dfUSER_MAP_HASH];
 	
 public:
 
