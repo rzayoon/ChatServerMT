@@ -1,5 +1,9 @@
+#include <Windows.h>
+
 #include <thread>
 #include <utility>
+#include <vector>
+using std::vector;
 #include <unordered_map>
 using std::unordered_map;
 
@@ -15,7 +19,7 @@ using std::unordered_map;
 #include "CrashDump.h"
 #include "ProfileTls.h"
 
-
+ChatServer g_chatServer;
 
 
 ChatServer::ChatServer()
@@ -26,13 +30,17 @@ ChatServer::ChatServer()
 	InitSector();
 
 	m_maxUser = 15000;
-
+	
 	m_connectCnt = 0;
 	m_loginCnt = 0;
 	m_duplicateLogin = 0;
 	m_messageTps = 0;
 
 	runningWorker = 0;
+
+	m_runTimeCheck = true;
+
+	h_timeOutThread = CreateThread(NULL, 0, TimeOutThread, (PVOID)&m_runTimeCheck, 0, NULL);
 }
 
 
@@ -42,6 +50,9 @@ ChatServer::~ChatServer()
 		DeleteCriticalSection(&m_userMapCS[i]);*/
 	ReleaseSector();
 
+	m_runTimeCheck = false;
+	WaitForSingleObject(h_timeOutThread, INFINITE);
+	
 }
 
 bool ChatServer::OnConnectionRequest(wchar_t* ip, unsigned short port)
@@ -82,59 +93,66 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 
 	ULONGLONG t = GetTickCount64();
 
-	if (!AcquireUser(session_id, &user))
-		CrashDump::Crash();
-
-	long long acc = user->account_no;
-
-	user->old_recv_time = user->last_recv_time;
-	user->last_recv_time = GetTickCount64();
-
 	bool result_proc = false;
+	
+	if (AcquireUser(session_id, &user))
+	{
+		long long acc = user->account_no;
 
-	// Packet Proc
-	switch (packet_type)
-	{
-	case en_PACKET_CS_CHAT_REQ_LOGIN:
-	{
+		user->old_recv_time = user->last_recv_time;
+		user->last_recv_time = GetTickCount64();
+
+
+		// Packet Proc
+		switch (packet_type)
+		{
+		case en_PACKET_CS_CHAT_REQ_LOGIN:
+		{
 #ifdef dfTRACE_CHAT
-		m_chatTracer.trace(10, (PVOID)user->session_id, GetTickCount64());
+			m_chatTracer.trace(10, (PVOID)user->session_id, GetTickCount64());
 #endif
-		result_proc = PacketProcessor::ProcLogin(user, packet);
-		break;
-	}
-	case en_PACKET_CS_CHAT_REQ_SECTOR_MOVE:
-	{
+			result_proc = PacketProcessor::ProcLogin(user, packet);
+			break;
+		}
+		case en_PACKET_CS_CHAT_REQ_SECTOR_MOVE:
+		{
 #ifdef dfTRACE_CHAT
-		m_chatTracer.trace(11, (PVOID)user->session_id, GetTickCount64());
+			m_chatTracer.trace(11, (PVOID)user->session_id, GetTickCount64());
 #endif
-		result_proc = PacketProcessor::ProcSectorMove(user, packet);
-		break;
-	}
-	case en_PACKET_CS_CHAT_REQ_MESSAGE:
-	{
+			result_proc = PacketProcessor::ProcSectorMove(user, packet);
+			break;
+		}
+		case en_PACKET_CS_CHAT_REQ_MESSAGE:
+		{
 #ifdef dfTRACE_CHAT
-		m_chatTracer.trace(12, (PVOID)user->session_id, GetTickCount64());
+			m_chatTracer.trace(12, (PVOID)user->session_id, GetTickCount64());
 #endif
-		result_proc = PacketProcessor::ProcMessage(user, packet);
-		break;
+			result_proc = PacketProcessor::ProcMessage(user, packet);
+			break;
+		}
+		case en_PACKET_CS_CHAT_REQ_HEARTBEAT:
+		{
+			result_proc = true;
+			break;
+		}
+		default: // undefined protocol
+		{
+			// 예외 처리
+			break;
+		}
+
+		}
+
+		ReleaseUser(user);
 	}
-	case en_PACKET_CS_CHAT_REQ_HEARTBEAT:
+	else
 	{
-		//  필요 없음
-		break;
-	}
-	default: // undefined protocol
-	{
-		// 예외 처리
-		break;
-	}
+		int a = 0;
 
 	}
-	ReleaseUser(user);
 
 	if (!result_proc) 
-		DisconnectSession(user->session_id);
+		DisconnectSession(session_id);
 
 	InterlockedIncrement(&m_messageTps);
 
@@ -182,14 +200,16 @@ bool ChatServer::AcquireUser(SS_ID s_id, User** user)
 	AcquireSRWLockShared(&m_userMapCS[idx]);
 	auto iter = m_userMap[idx].find(s_id);
 	if (iter == m_userMap[idx].end())
-		CrashDump::Crash();
-	*user = iter->second;
-	(*user)->Lock();
-
+		ret = false;
+	else 
+	{
+		*user = iter->second;
+		(*user)->Lock();
+	}
 	ReleaseSRWLockShared(&m_userMapCS[idx]);
 
 
-	return true;
+	return ret;
 }
 
 void ChatServer::ReleaseUser(User* user)
@@ -354,4 +374,52 @@ void ChatServer::Show()
 		m_connectCnt, m_loginCnt, m_duplicateLogin, message_tps, runningWorker);
 
 
+}
+
+void ChatServer::CheckTimeOut()
+{
+	int iCnt;
+
+	vector<User*> disconnect_vec;
+	disconnect_vec.reserve(m_maxUser);
+
+	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
+	{
+		AcquireSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);
+	}
+
+
+	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
+	{
+		for (auto& iter : m_userMap[iCnt])
+		{
+			User* user = iter.second;
+			if (GetTickCount64() - user->GetLastRecvTime() >= 40000) {
+				user->last_recv_time = GetTickCount64();
+				// disconnect
+			}
+		}
+	}
+
+	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
+	{
+		ReleaseSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);
+	}
+
+
+
+
+}
+
+DWORD TimeOutThread(PVOID param)
+{
+	bool* runTimeCheck = (bool*)param;
+
+	while (*runTimeCheck)
+	{
+		Sleep(1000);
+		g_chatServer.CheckTimeOut();
+	}
+
+	return 0;
 }

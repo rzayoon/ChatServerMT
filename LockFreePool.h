@@ -14,6 +14,9 @@
 template <class DATA>
 class LockFreePool
 {
+	template <class DATA> friend class LockFreeQueue;
+	template <class DATA> friend class LockFreeStack;
+
 #ifdef LOCKFREE_DEBUG
 	enum
 	{
@@ -39,13 +42,13 @@ class LockFreePool
 		}
 	};
 
-public:
+private:
 	/// <summary>
 	/// 생성자 
 	/// </summary>
-	/// <param name="block_num"> 초기 블럭 수 </param>
-	/// <param name="free_list"> capacity 추가 여부 </param>
-	LockFreePool(int _block_num, bool _free_list = true);
+	/// <param name="block_num"> 가용 공간 </param>
+	/// <param name="free_list"> true면 capacity 추가 기본값 true </param>
+	LockFreePool(int capacity = 0, bool freeList = true);
 
 	virtual ~LockFreePool();
 
@@ -71,7 +74,7 @@ public:
 	/// <returns>오브젝트 풀에서 생성한 전체 블럭 수</returns>
 	int GetCapacity()
 	{
-		return capacity;
+		return _capacity;
 	}
 	/// <summary>
 	/// 
@@ -79,7 +82,7 @@ public:
 	/// <returns>오브젝트 풀에서 제공한 블럭 수</returns>
 	int GetUseCount()
 	{
-		return use_count;
+		return _useCount;
 	}
 
 protected:
@@ -95,14 +98,15 @@ protected:
 #ifdef LOCKFREE_DEBUG
 	int padding_size;
 #endif
-	alignas(64) unsigned int use_count;
-	alignas(64) unsigned int capacity;
-	alignas(64) bool free_list;
-
+	alignas(64) unsigned int _useCount;
+	alignas(64) unsigned int _capacity;
+	// 읽기 전용
+	alignas(64) bool _freeList;
+	alignas(64) char b; // 클래스 뒤에 뭐가 올지 모름 (자주 변경되는 값? - > freelist 읽을 때 캐시무효화)
 };
 
 template<class DATA>
-LockFreePool<DATA>::LockFreePool(int _capacity, bool _free_list)
+LockFreePool<DATA>::LockFreePool(int capacity, bool freeList)
 {
 	SYSTEM_INFO si;
 	GetSystemInfo(&si);
@@ -112,18 +116,18 @@ LockFreePool<DATA>::LockFreePool(int _capacity, bool _free_list)
 		Crash();
 	}
 
-	capacity = _capacity;
-	free_list = _free_list;
-	use_count = 0;
+	_capacity = capacity;
+	_freeList = freeList;
+	_useCount = 0;
 
 #ifdef LOCKFREE_DEBUG
 	padding_size = max(sizeof(BLOCK_NODE::front_pad), alignof(DATA));
 #endif
 
-	for (unsigned int i = 0; i < capacity; i++)
+	for (int i = 0; i < capacity; i++)
 	{
 		BLOCK_NODE* temp = (BLOCK_NODE*)_aligned_malloc(sizeof(BLOCK_NODE), alignof(BLOCK_NODE));
-		ZeroMemory(&temp->data, sizeof(DATA));
+
 #ifdef LOCKFREE_DEBUG
 		temp->front_pad = PAD;
 		temp->back_pad = PAD;
@@ -138,9 +142,8 @@ LockFreePool<DATA>::LockFreePool(int _capacity, bool _free_list)
 template<class DATA>
 LockFreePool<DATA>::~LockFreePool()
 {
-	// 반환 안된 노드 누수됨. 추후 해결
-	// 1. 할당 시 따로 저장해둔 뒤에 반환하는 방법
-	// 2. VirtualAlloc 활용해서 풀의 노드 한꺼번에 정리
+	// 반환 안된 노드는 포기.. 어차피 전역에 놓고 쓸거라 
+	// 소멸 시점은 프로그램 종료 때
 	BLOCK_NODE* top_addr = (BLOCK_NODE*)((unsigned long long)top & dfADDRESS_MASK);
 	BLOCK_NODE* temp;
 
@@ -170,12 +173,12 @@ DATA* LockFreePool<DATA>::Alloc()
 
 		if (old_top_addr == nullptr)
 		{
-			if (free_list)
+			if (_freeList)
 			{
-				InterlockedIncrement(&capacity);
+				InterlockedIncrement(&_capacity);
 
 				old_top_addr = (BLOCK_NODE*)_aligned_malloc(sizeof(BLOCK_NODE), alignof(BLOCK_NODE));
-				ZeroMemory(&old_top_addr->data, sizeof(DATA));
+	
 #ifdef LOCKFREE_DEBUG
 				old_top_addr->front_pad = PAD;
 				old_top_addr->back_pad = PAD;
@@ -204,7 +207,7 @@ DATA* LockFreePool<DATA>::Alloc()
 		}
 	}
 
-	InterlockedIncrement((LONG*)&use_count);
+	InterlockedIncrement((LONG*)&_useCount);
 
 	return &old_top_addr->data;
 	
@@ -242,7 +245,7 @@ bool LockFreePool<DATA>::Free(DATA* data)
 
 		if (old_top == (unsigned long long)InterlockedCompareExchangePointer((PVOID*)&top, (PVOID)new_top, (PVOID)old_top))
 		{
-			InterlockedDecrement((LONG*)&use_count);
+			InterlockedDecrement((LONG*)&_useCount);
 			break;
 		}
 	}

@@ -41,8 +41,8 @@ public:
 	wchar_t nickname[MAX_NICK_SIZE];
 	char session_key[MAX_SESSION_KEY_SIZE];
 
-	unsigned short sector_x;
-	unsigned short sector_y;
+	short sector_x;
+	short sector_y;
 
 	unsigned long long last_recv_time;
 	unsigned long long old_recv_time;

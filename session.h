@@ -36,7 +36,7 @@ public:
 #ifdef AUTO_PACKET
 	LockFreeQueue<PacketPtr> send_q = LockFreeQueue<PacketPtr>(0, TRUE);
 #else
-	LockFreeQueue<CPacket*> send_q = LockFreeQueue<CPacket*>(50);
+	LockFreeQueue<CPacket*> send_q = LockFreeQueue<CPacket*>(50, false);
 #endif
 
 	// interlock
@@ -48,7 +48,7 @@ public:
 	alignas(64) int send_flag;
 	alignas(64) int send_packet_cnt;  // Send에 넣은 Packet 객체 삭제에 필요
 	alignas(64) DWORD ref_time;
-	DWORD send_packet_time;
+	ULONGLONG send_packet_time;
 
 	wchar_t ip[16];
 	unsigned short port;

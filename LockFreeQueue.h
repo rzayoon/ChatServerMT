@@ -2,12 +2,7 @@
 #include <Windows.h>
 #include "LockFreePool.h"
 
-/// <summary>
-/// Template type T는 복사 비용을 낮추기 위해 일반타입이나 포인터를 사용할 것. 
-/// LockFree Queue는 Enqueue와 Dequeue에 경합이 있다.
-/// 
-/// </summary>
-/// <typeparam name="T"></typeparam>
+
 
 template<class T>
 class LockFreeQueue
@@ -16,13 +11,11 @@ class LockFreeQueue
 	{
 		T data;
 		Node* next;
-		//int del_cnt;
 
 		Node()
 		{
 
 			next = nullptr;
-			//del_cnt = 0;
 		}
 
 		~Node()
@@ -34,7 +27,7 @@ class LockFreeQueue
 
 public:
 
-	LockFreeQueue(unsigned int size = 10000, bool free_list = true);
+	LockFreeQueue(unsigned int capacity = 10000, bool freeList = true);
 	~LockFreeQueue();
 
 	bool Enqueue(T data);
@@ -48,17 +41,19 @@ private:
 	alignas(64) Node* _head;
 	alignas(64) LONG64 _size;
 	LockFreePool<Node>* _pool;
-	bool _free_list;
+	bool _freeList;
 };
 
 template<class T>
-inline LockFreeQueue<T>::LockFreeQueue(unsigned int size, bool free_list)
+inline LockFreeQueue<T>::LockFreeQueue(unsigned int capacity, bool free_list)
 {
 	_size = 0;
-	_free_list = free_list;
-	_pool = new LockFreePool<Node>(size + 1, _free_list);
-	_head = _pool->Alloc();
-
+	_freeList = free_list;
+	_pool = new LockFreePool<Node>(capacity + 1, _freeList);
+	Node* dummy = _pool->Alloc();
+	dummy->next = nullptr;
+	_head = dummy;
+	
 	_tail = _head;
 }
 
@@ -144,19 +139,17 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 
 		if (next == nullptr)
 		{
-			// 앞 로직에서 개수 판단으로 디큐 가능으로 판단할 경우에도
-			// 현재 분기에 들어올 수 있음.
+			// 정말 없었으면 안들어왔어야 함.
+			// 그럼에도 원인이 될 수 있는 상황
 			// 1. 지금 보고 있는 head가 다른 스레드에서 dequeue되었고 다시 enque과정에서 next가 null로 쓰여졌다.
 			// 2. 한 스레드가 enque에서 노드 하나를 tail로 저장하고 잠시 안돌았음
 			//    -> 해당 노드가 queue에서 빠져나감 -> 다시 enqueue에서 next = null 됨
 			//    -> 멈춰있던 스레드가 동작하면서 next에 이어버림 -> 사이즈 증가
 			//    -> 해당 노드를 연결해야하는 스레드가 정지중.
 			//    -> 이 때 디큐 시도하는 스레드는 기다리느라 못하는 상태가 됨.
-			//    이 때 next가 nullptr이 아닐 때까지 반복하고 enqueue 중인 스레드가 일을 마치면 해결이 된다.
+			//    이 문제는 enqueue 중인 스레드가 일을 마치면 해결이 된다.
 			//    하지만 다른 스레드 때문에 해야할 일을 못하는 것은 락프리의 목적에 위배된다.
 			//    next가 null로 읽히면 1, 2의 상황 구분하지 않고 그냥 없는 것으로 본다..
-			// 다음에 꺼내가면 된다. 사용시 주의 필요함.
-
 			InterlockedIncrement64(&_size);
 			return false;
 		}

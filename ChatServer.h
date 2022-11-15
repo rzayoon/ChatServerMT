@@ -63,4 +63,16 @@ private:
 #endif
 public:
 	void Show();
+	void CheckTimeOut();
+
+
+private:
+
+	HANDLE h_timeOutThread;
+	alignas(64) bool m_runTimeCheck;
+
 };
+
+DWORD TimeOutThread(PVOID param);
+
+extern ChatServer g_chatServer;

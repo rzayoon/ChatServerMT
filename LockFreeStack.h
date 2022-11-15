@@ -1,5 +1,4 @@
 #pragma once
-#include <Windows.h>
 #include "LockFreePool.h"
 
 
@@ -26,30 +25,31 @@ class LockFreeStack
 
 public:
 
-	LockFreeStack(unsigned int size = 10000, bool placement_new = false);
+	LockFreeStack(unsigned int size = 10000, bool freeList = true);
 	~LockFreeStack();
 
 	bool Push(T data);
 	bool Pop(T* data);
-	int GetSize();
+	long long GetSize();
 
 
 private:
 
 	alignas(64) Node* _top;
-	alignas(64) ULONG64 _size;
-	alignas(64) bool _placement_new;
+	alignas(64) LONG64 _size;
+	alignas(64) bool _freeList;
 	LockFreePool<Node> *_pool;
+	alignas(64) char b;
 
 };
 
 template<class T>
-inline LockFreeStack<T>::LockFreeStack(unsigned int size, bool placement_new)
+inline LockFreeStack<T>::LockFreeStack(unsigned int size, bool freeList)
 {
 	_size = 0;
 	_top = nullptr;
-	_placement_new = placement_new;
-	_pool = new LockFreePool<Node>(size);
+	_freeList = freeList;
+	_pool = new LockFreePool<Node>(size, freeList);
 }
 
 template<class T>
@@ -84,7 +84,7 @@ inline bool LockFreeStack<T>::Push(T data)
 
 		if (old_top == (unsigned long long)InterlockedCompareExchangePointer((PVOID*)&_top, new_top, (PVOID)old_top))
 		{
-			InterlockedIncrement(&_size);
+			InterlockedIncrement64(&_size);
 			break;
 		}
 
@@ -118,7 +118,7 @@ inline bool LockFreeStack<T>::Pop(T* data)
 
 		if (old_top == (unsigned long long)InterlockedCompareExchangePointer((PVOID*)&_top, (PVOID)new_top, (PVOID)old_top))
 		{
-			InterlockedDecrement(&_size);
+			InterlockedDecrement64(&_size);
 			*data = old_top_addr->data;
 			
 			old_top_addr->data.~T();
@@ -132,7 +132,7 @@ inline bool LockFreeStack<T>::Pop(T* data)
 }
 
 template<class T>
-inline int LockFreeStack<T>::GetSize()
+inline long long LockFreeStack<T>::GetSize()
 {
 	return _size;
 }

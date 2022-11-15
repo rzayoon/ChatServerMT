@@ -35,8 +35,6 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 	{
 		// 같은 세션id에서 중복 로그인 메시지
 
-		CrashDump::Crash();
-
 		CPacket* send_packet = CPacket::Alloc();
 		
 		PacketMaker::MakeLogin(send_packet, 0, account_no);
@@ -44,9 +42,6 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 		g_chatServer.SendMessageUni(send_packet, user);
 
 		CPacket::Free(send_packet);
-
-		g_chatServer.DisconnectSession(user->session_id);
-		
 		
 		ret = false;
 	}
@@ -81,8 +76,7 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 
 				InterlockedIncrement(&g_chatServer.m_duplicateLogin);
 
-				//g_server.DisconnectSession(temp_user->session_id);
-				//g_server.DisconnectSession(user->session_id);
+				g_chatServer.DisconnectSession(temp_user->session_id);
 
 				ret = false;
 			}
@@ -94,6 +88,7 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 	{
 		ReleaseSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);
 	}
+	if (!ret) return false;
 
 	InterlockedDecrement(&g_chatServer.m_connectCnt);
 	InterlockedIncrement(&g_chatServer.m_loginCnt);
@@ -116,8 +111,8 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 {
 	__int64 account_no;
-	WORD sector_x;
-	WORD sector_y;
+	short sector_x;
+	short sector_y;
 	Profile pro = Profile(L"SectorMove");
 
 	(*packet) >> account_no >> sector_x >> sector_y;
@@ -138,11 +133,11 @@ bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 	
 
 	// todo SectorMove 함수화 하기
-	WORD lock_y[2];
-	WORD lock_x[2];
+	short lock_y[2];
+	short lock_x[2];
 	int lock_cnt = 1;
 
-	if (!user->is_in_sector)
+	if (!user->is_in_sector) // 처음
 	{
 		lock_y[0] = sector_y;
 		lock_x[0] = sector_x;

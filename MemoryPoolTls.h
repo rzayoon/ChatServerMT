@@ -7,17 +7,6 @@
 #include "LockFreeQueue.h"
 #include "LockFreeStack.h"
 
-
-
-/// <summary>
-/// 멀티 스레드 세이프한 메모리(오브젝트)풀
-/// 각 스레드는 청크 단위로 노드를 관리함.
-/// 생성자 첫번째 인자는 청크의 기본 크기
-///        두번째 인자는 true일 경우 노드의 할당, 반환시 생성자, 소멸자 호출 
-///						 false일 경우 메모리풀 생성과 소멸시에만 노드 생성자 소멸자 호출됨.
-/// 
-/// </summary>
-/// <typeparam name="DATA"></typeparam>
 template <class DATA>
 class MemoryPoolTls
 {
@@ -166,6 +155,7 @@ class MemoryPoolTls
 
 public:
 
+
 	MemoryPoolTls(int _default_size = DEFAULT_SIZE, bool _placement_new = false)
 	{
 		tls_index = TlsAlloc();
@@ -222,11 +212,17 @@ public:
 		BLOCK_NODE* chunk_top;
 		// 할당
 		POOL* td_pool = td->pool;
-		
 		DATA* ret;
 		if (td_pool->size == 0) // 풀 다 쓴 경우
 		{
-			if (chunk_pool.Pop(&chunk_top))
+			POOL* td_chunk = td->chunk;
+			if (td_chunk->size != 0) // 스레드에서 모은거 사용
+			{
+				td_pool->top = td_chunk->top;
+				td_pool->size = td_chunk->size;
+				td_chunk->size = 0;
+			}
+			else if (chunk_pool.Pop(&chunk_top))
 			{ // 가용 청크 가져옴
 				InterlockedIncrement((LONG*)&chunk_cnt);
 				td_pool->top = chunk_top;
@@ -304,4 +300,5 @@ private:
 	alignas(64) int tls_index;
 	bool placement_new;
 	int default_size;
+	int a = 0;
 };

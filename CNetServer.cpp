@@ -310,9 +310,9 @@ inline void CNetServer::RunAcceptThread()
 			session->send_flag = false;
 			session->send_packet_cnt = 0;
 			session->disconnect = false;
-			// send queue, recv_queue는 release 때 정리되어 있어야 함
+			// send queue는 release 때 정리되어 있어야 함
 			//session->send_q.ClearBuffer();
-			//session->recv_q.ClearBuffer();
+			session->recv_q.ClearBuffer();
 
 			CreateIoCompletionPort((HANDLE)session->sock, m_hcp, (ULONG_PTR)session, 0);
 
@@ -369,10 +369,12 @@ inline void CNetServer::RunIoThread()
 		{
 			//에러코드 로깅
 			error_code = GetLastError();
+			if (error_code != ERROR_NETNAME_DELETED) {
 #ifdef TRACE_SERVER
-			if (error_code != ERROR_NETNAME_DELETED)
 				tracer.trace(00, session, error_code);
 #endif
+				OnError(error_code, L"GQCS return 0");
+			}
 		}
 
 		session->ref_time = GetTickCount64();
@@ -574,7 +576,6 @@ bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 	Session* session = &m_sessionArr[idx];
 
 	InterlockedIncrement((LONG*)&session->io_count);
-	session->send_packet_time = GetTickCount64();
 #ifdef TRACE_SESSION
 	session->pending_tracer.trace(7, 0, GetTickCount64());
 #endif
@@ -584,11 +585,17 @@ bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 		{
 			packet->AddRef();
 
-			session->send_q.Enqueue(packet);  // 64 bit 기준 8byte
+			if (session->send_q.Enqueue(packet))
+			{
+				session->send_packet_time = GetTickCount64();
+				SendPost(session);
 
-			SendPost(session);
-
-			ret = true;
+				ret = true;
+			}
+			else
+			{
+				packet->SubRef();
+			}
 		}
 		else
 		{

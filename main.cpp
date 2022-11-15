@@ -24,7 +24,7 @@ using std::unordered_map;
 
 #define SERVERPORT 6000
 
-ChatServer g_chatServer;
+
 
 int main()
 {
