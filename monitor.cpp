@@ -167,7 +167,8 @@ void Monitor::Show(int session_cnt, int packet_pool, int job_queue)
 	int max_thread_one_session = InterlockedExchange(&MaxThreadOneSession, 0);
 
 	LONG max_packet = InterlockedExchange(&max_send_packet, 0);
-	LONG min_packet = InterlockedExchange(&min_send_packet, 999999999);
+	LONG min_packet = InterlockedExchange(&min_send_packet, LONG_MAX);
+	if (min_packet == LONG_MAX) min_packet = 0;
 	LONG total_packet = InterlockedExchange(&total_send_packet, 0);
 	LONG cnt = InterlockedExchange(&___cnt, 0);
 	double avg_packet = 0;

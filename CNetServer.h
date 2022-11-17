@@ -6,7 +6,7 @@
 #include "Tracer.h"
 #include "monitor.h"
 
-#define STACK_INDEX
+
 
 /// <summary>
 /// 
@@ -175,6 +175,8 @@ private:
 	void UpdatePendCount(Session* session);
 	void CancelIOSession(Session* session);
 	void ReleaseSession(Session* session);
+	void LeaveSession(Session* session);
+
 
 	bool m_isRunning;
 

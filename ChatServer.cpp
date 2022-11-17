@@ -365,13 +365,21 @@ void ChatServer::Show()
 {
 	CNetServer::Show();
 
+	int user_cnt = 0;
+
+	for (int i = 0; i < dfUSER_MAP_HASH; i++)
+	{
+		user_cnt += m_userMap[i].size();
+	}
+
 	unsigned int message_tps = InterlockedExchange(&m_messageTps, 0);
 	wprintf(L"Connect : %d\n"
 		L"Login : %d\n"
 		L"Duplicated login proc : %d\n"
 		L"Message TPS : %d\n"
-		L"Running WorkerThread : %d\n",
-		m_connectCnt, m_loginCnt, m_duplicateLogin, message_tps, runningWorker);
+		L"Running WorkerThread : %d\n"
+		L"User : %d\n",
+		m_connectCnt, m_loginCnt, m_duplicateLogin, message_tps, runningWorker, user_cnt);
 
 
 }
@@ -397,6 +405,7 @@ void ChatServer::CheckTimeOut()
 			if (GetTickCount64() - user->GetLastRecvTime() >= 40000) {
 				user->last_recv_time = GetTickCount64();
 				// disconnect
+				DisconnectSession(user->session_id);
 			}
 		}
 	}
