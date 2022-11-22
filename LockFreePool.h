@@ -142,8 +142,7 @@ LockFreePool<DATA>::LockFreePool(int capacity, bool freeList)
 template<class DATA>
 LockFreePool<DATA>::~LockFreePool()
 {
-	// 반환 안된 노드는 포기.. 어차피 전역에 놓고 쓸거라 
-	// 소멸 시점은 프로그램 종료 때
+	// todo : 블럭 생성시 따로 리스트에 보관해서 삭제하기
 	BLOCK_NODE* top_addr = (BLOCK_NODE*)((unsigned long long)top & dfADDRESS_MASK);
 	BLOCK_NODE* temp;
 
