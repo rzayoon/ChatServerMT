@@ -57,7 +57,7 @@ ChatServer::~ChatServer()
 
 bool ChatServer::OnConnectionRequest(wchar_t* ip, unsigned short port)
 {
-	// 느슨하게 login cnt 증가 스레드 accept스레드라서 더 올라가지는 않음
+	//
 	
 	if (m_loginCnt > m_maxUser)
 	{
