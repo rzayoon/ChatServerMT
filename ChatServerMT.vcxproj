@@ -151,6 +151,7 @@
   <ItemGroup>
     <ClCompile Include="CCpuUsage.cpp" />
     <ClCompile Include="ChatServer.cpp" />
+    <ClCompile Include="CLog.cpp" />
     <ClCompile Include="CNetServer.cpp" />
     <ClCompile Include="CPacket.cpp" />
     <ClCompile Include="CrashDump.cpp" />
@@ -170,6 +171,7 @@
     <ClInclude Include="CCpuUsage.h" />
     <ClInclude Include="ChatProtocol.h" />
     <ClInclude Include="ChatServer.h" />
+    <ClInclude Include="CLog.h" />
     <ClInclude Include="CNetServer.h" />
     <ClInclude Include="CommonProtocol.h" />
     <ClInclude Include="CPacket.h" />

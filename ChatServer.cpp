@@ -19,6 +19,8 @@ using std::unordered_map;
 #include "CrashDump.h"
 #include "ProfileTls.h"
 
+#include "CLog.h"
+
 ChatServer g_chatServer;
 
 
@@ -184,6 +186,7 @@ void ChatServer::OnWorkerThreadEnd()
 
 void ChatServer::OnError(int errorcode, const wchar_t* msg)
 {
+	Log(L"SYS", enLOG_LEVEL_ERROR, L"OnError : %d %s", errorcode, msg);
 
 	return;
 }
@@ -403,9 +406,14 @@ void ChatServer::CheckTimeOut()
 		{
 			User* user = iter.second;
 			if (GetTickCount64() - user->GetLastRecvTime() >= 40000) {
-				user->last_recv_time = GetTickCount64();
+				ULONG64 lastTick = user->last_recv_time;
+				ULONG64 nowTick;
+				user->last_recv_time = nowTick = GetTickCount64();
+				unsigned long long s_id = user->session_id;
 				// disconnect
 				DisconnectSession(user->session_id);
+				Log(L"Chat", enLOG_LEVEL_DEBUG, L"Time Out session: %lld %lld %lld\n", s_id, lastTick, nowTick);
+
 			}
 		}
 	}
@@ -427,7 +435,7 @@ DWORD TimeOutThread(PVOID param)
 	while (*runTimeCheck)
 	{
 		Sleep(1000);
-		g_chatServer.CheckTimeOut();
+		//g_chatServer.CheckTimeOut();
 	}
 
 	return 0;

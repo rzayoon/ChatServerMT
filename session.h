@@ -8,7 +8,7 @@
 #define STACK_INDEX
 #define TRACE_SESSION
 
-#define MAX_SENDQ 50
+#define MAX_SENDQ 100
 
 
 #ifdef TRACE_SESSION
@@ -25,8 +25,9 @@ enum
 	enRecvFailed = 11,
 	enRecvAsync = 12,
 	enRecvSync = 13,
+	enRetGQCS = 20,
 	enRelease = 99
-
+	
 };
 #endif
 
@@ -59,7 +60,7 @@ public:
 #ifdef AUTO_PACKET
 	LockFreeQueue<PacketPtr> send_q = LockFreeQueue<PacketPtr>(MAX_SENDQ, false);
 #else
-	LockFreeQueue<CPacket*> send_q = LockFreeQueue<CPacket*>(MAX_SENDQ, false);
+	LockFreeQueue<CPacket*> send_q = LockFreeQueue<CPacket*>(MAX_SENDQ, true);
 #endif
 
 	// interlock

@@ -10,6 +10,7 @@
 #include "CNetServer.h"
 #include "NetProtocol.h"
 #include "CrashDump.h"
+#include "CLog.h"
 
 long long packet_counter[101];
 int log_arr[100];
@@ -367,27 +368,44 @@ inline void CNetServer::RunIoThread()
 			}
 		}
 
-
 		if (ret_gqcp == 0)
 		{
 			//에러코드 로깅
 			error_code = GetLastError();
-			if (error_code != ERROR_NETNAME_DELETED) {
+			switch (error_code)
+			{
+			case ERROR_NETNAME_DELETED:
+				break;
+			case ERROR_OPERATION_ABORTED:
+				break;
+			default:
 #ifdef TRACE_SERVER
 				tracer.trace(00, session, error_code);
 #endif
 				OnError(error_code, L"GQCS return 0");
+				break;
+
 			}
+
 		}
 
-		session->ref_time = GetTickCount64();
+#ifdef TRACE_SESSION
+		session->pending_tracer.trace(enRetGQCS, (unsigned long long)overlapped, cbTransferred);
+#endif
 
 		if (cbTransferred == 0 || session->disconnect) // Pending 후 I/O 처리 실패
 		{
 #ifdef TRACE_SERVER
 			tracer.trace(78, session, session->session_id);
 #endif
-			if (!session->leave_flag)
+			if ((unsigned long long)overlapped == 1)
+			{
+				session->send_flag = false;
+
+				SendPost(session);
+
+			}
+			else if (!session->leave_flag)
 			{
 				LeaveSession(session);
 			}
@@ -432,6 +450,7 @@ inline void CNetServer::RunIoThread()
 					packet->MoveWritePos(header.len);
 					if (!packet->Decode())
 					{
+						Log(L"SYS", enLOG_LEVEL_DEBUG, L"Packet Error");
 						Disconnect(session);
 					}
 
@@ -592,8 +611,14 @@ bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 
 			if (session->send_q.Enqueue(packet))
 			{
-				session->send_packet_time = GetTickCount64();
-				SendPost(session);
+				if (InterlockedExchange((LONG*)&session->send_flag, true) == false)
+				{
+					InterlockedIncrement((LONG*)&session->io_count);
+					PostQueuedCompletionStatus(m_hcp, 0, (ULONG_PTR)session, (LPOVERLAPPED)1);
+
+				}
+
+				
 
 				ret = true;
 			}
@@ -970,6 +995,7 @@ inline void CNetServer::ReleaseSession(Session* session)
 
 void CNetServer::LeaveSession(Session* session)
 {
+
 	unsigned int flag = *((unsigned int*)(&session->leave_flag));
 	if (flag == 0x0)
 	{

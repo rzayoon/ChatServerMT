@@ -78,7 +78,7 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 
 				g_chatServer.DisconnectSession(temp_user->session_id);
 
-				ret = false;
+				ret = true;
 			}
 		}
 		if (!ret) break;

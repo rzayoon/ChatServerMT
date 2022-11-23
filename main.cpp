@@ -20,7 +20,7 @@ using std::unordered_map;
 #include "TextParser.h"
 #include "ProfileTls.h"
 #include "CCpuUsage.h"
-
+#include "CLog.h"
 
 #define SERVERPORT 6000
 
@@ -58,7 +58,7 @@ int main()
 
 	MultiByteToWideChar(CP_ACP, 0, ip, 16, wip, 16);
 
-	
+	SYSLOG_Init(L"Log", enLOG_LEVEL_DEBUG);
 
 	g_chatServer.Start(wip, port, worker, max_worker, max_session, 1, packet_key, packet_code);
 	CCpuUsage CpuTime;
