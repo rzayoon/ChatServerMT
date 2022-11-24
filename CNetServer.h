@@ -7,6 +7,8 @@
 #include "monitor.h"
 
 
+#define SEND_ZEROCOPY
+
 
 /// <summary>
 /// 
@@ -186,12 +188,16 @@ private:
 
 	Session* m_sessionArr;
 	unsigned int m_sess_id = 1;
-	
+#ifdef MONITOR
 	Monitor monitor;
+#endif
+
 #ifdef TRACE_SERVER
 	Tracer tracer;
 #endif
 
 	alignas(64) int m_sessionCnt = 0;
+	alignas(64) int m_totalAccept = 0;
+	int m_acceptErr = 0;
 };
 

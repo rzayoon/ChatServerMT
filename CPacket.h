@@ -212,7 +212,7 @@ private:
 protected:
 
 	// 정적 멤버
-	inline static MemoryPoolTls<CPacket> packet_pool = MemoryPoolTls<CPacket>(1000);
+	inline static MemoryPoolTls<CPacket> packet_pool = MemoryPoolTls<CPacket>(500);
 	inline static unsigned char packet_code = 0;
 	inline static unsigned char packet_key = 0;
 	// 고정 

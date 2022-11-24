@@ -5,6 +5,8 @@
 #include "monitor.h"
 #include "session.h"
 
+#ifdef MONITOR
+
 void Monitor::IncAccept()
 {
 	InterlockedIncrement(&accept);
@@ -208,3 +210,5 @@ void Monitor::Show(int session_cnt, int packet_pool, int job_queue)
 
 	return;
 }
+
+#endif

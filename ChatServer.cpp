@@ -38,7 +38,6 @@ ChatServer::ChatServer()
 	m_duplicateLogin = 0;
 	m_messageTps = 0;
 
-	runningWorker = 0;
 
 	m_runTimeCheck = true;
 
@@ -172,14 +171,12 @@ void ChatServer::OnSend(unsigned long long session_id, int send_size)
 
 void ChatServer::OnWorkerThreadBegin()
 {
-	InterlockedIncrement((LONG*)&runningWorker);
 
 	return;
 }
 
 void ChatServer::OnWorkerThreadEnd()
 {
-	InterlockedDecrement((LONG*)&runningWorker);
 
 	return;
 }
@@ -380,9 +377,8 @@ void ChatServer::Show()
 		L"Login : %d\n"
 		L"Duplicated login proc : %d\n"
 		L"Message TPS : %d\n"
-		L"Running WorkerThread : %d\n"
 		L"User : %d\n",
-		m_connectCnt, m_loginCnt, m_duplicateLogin, message_tps, runningWorker, user_cnt);
+		m_connectCnt, m_loginCnt, m_duplicateLogin, message_tps, user_cnt);
 
 
 }
@@ -435,7 +431,7 @@ DWORD TimeOutThread(PVOID param)
 	while (*runTimeCheck)
 	{
 		Sleep(1000);
-		//g_chatServer.CheckTimeOut();
+		g_chatServer.CheckTimeOut();
 	}
 
 	return 0;

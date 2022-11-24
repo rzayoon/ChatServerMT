@@ -3,7 +3,7 @@
 
 #define MEGA_ARG 1000000.0
 
-
+#ifdef MONITOR
 class alignas(64) Monitor
 {
 public:
@@ -65,11 +65,8 @@ public:
 private:
 
 
-	alignas(64) LONG total_accept;
 	alignas(64) LONG send_per_sec;
 	alignas(64) LONG recv_per_sec;
-	alignas(64) LONG accept_err;
-	alignas(64) LONG accept;
 	alignas(64) double sendpost_time;
 	alignas(64) LONG sendpost_in_recv_cnt;
 	alignas(64) LONG sendpacket_cnt;
@@ -92,3 +89,5 @@ private:
 	alignas(64) LONG no_session;
 	alignas(64) LARGE_INTEGER frq;
 };
+
+#endif

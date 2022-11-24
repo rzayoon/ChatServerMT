@@ -6,9 +6,9 @@
 #include "Tracer.h"
 
 #define STACK_INDEX
-#define TRACE_SESSION
+//#define TRACE_SESSION
 
-#define MAX_SENDQ 100
+#define MAX_SENDQ 200
 
 
 #ifdef TRACE_SESSION
@@ -41,6 +41,8 @@ public:
 	void Lock();
 	void Unlock();
 
+	unsigned long long GetSessionID();
+
 #ifndef STACK_INDEX
 	bool used;
 #endif
@@ -60,7 +62,7 @@ public:
 #ifdef AUTO_PACKET
 	LockFreeQueue<PacketPtr> send_q = LockFreeQueue<PacketPtr>(MAX_SENDQ, false);
 #else
-	LockFreeQueue<CPacket*> send_q = LockFreeQueue<CPacket*>(MAX_SENDQ, true);
+	LockFreeQueue<CPacket*> send_q = LockFreeQueue<CPacket*>(MAX_SENDQ, false);
 #endif
 
 	// interlock

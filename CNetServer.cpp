@@ -15,6 +15,10 @@
 long long packet_counter[101];
 int log_arr[100];
 
+alignas(64) LONG SEMTIMEOUT = 0;
+alignas(64) LONG ABORTEDBYLOCAL = 0;
+
+
 bool CNetServer::Start(const wchar_t* ip, unsigned short port,
 	int iocpWorker, int iocpActive, int maxSession, bool nagle,
 	unsigned char packetKey, unsigned char packetCode)
@@ -223,11 +227,13 @@ inline void CNetServer::RunAcceptThread()
 	if (retVal == SOCKET_ERROR) return;
 
 	// 소켓 송신 버퍼
+#ifdef SEND_ZEROCOPY
 	int sendBufSize = 0;
 	setsockopt(listenSock, SOL_SOCKET, SO_SNDBUF, (char*)&sendBufSize, sizeof(sendBufSize));
+#endif
 
 	// nagle
-	if (m_nagle)
+	if (m_nagle == 0)
 		setsockopt(listenSock, IPPROTO_TCP, TCP_NODELAY, (char*)&m_nagle, sizeof(m_nagle));
 
 	// RST로 종료
@@ -257,7 +263,9 @@ inline void CNetServer::RunAcceptThread()
 		clientSock = accept(listenSock, (SOCKADDR*)&clientAddr, &addrLen);
 		if (clientSock == INVALID_SOCKET)
 		{
-			monitor.IncAcceptErr();
+
+			m_acceptErr++;
+
 			continue;
 		}
 		InetNtopW(AF_INET, &clientAddr.sin_addr, temp_ip, _countof(temp_ip));
@@ -265,7 +273,8 @@ inline void CNetServer::RunAcceptThread()
 #ifdef TRACE_SERVER
 		tracer.trace(70, 0, clientSock);
 #endif
-		monitor.IncAccept();
+
+		m_totalAccept++;
 
 		if (OnConnectionRequest(temp_ip, temp_port))
 		{
@@ -345,12 +354,14 @@ inline void CNetServer::RunIoThread()
 {
 	int ret_gqcp;
 	DWORD thread_id = GetCurrentThreadId();
+#ifdef MONITOR
 	LARGE_INTEGER recv_start, recv_end;
 	LARGE_INTEGER send_start, send_end;
 	LARGE_INTEGER on_recv_st, on_recv_ed;
+#endif
 	DWORD error_code;
 
-
+	int cnt = 0;
 
 	while (1)
 	{
@@ -382,7 +393,23 @@ inline void CNetServer::RunIoThread()
 #ifdef TRACE_SERVER
 				tracer.trace(00, session, error_code);
 #endif
-				OnError(error_code, L"GQCS return 0");
+				if (error_code == 121L)
+				{
+					cnt = InterlockedIncrement(&SEMTIMEOUT);
+				}
+				else if (error_code == 1236L)
+				{
+					cnt = InterlockedIncrement(&ABORTEDBYLOCAL);
+				}
+				else
+				{
+					cnt = 0;
+				}
+
+				Log(L"SYS", enLOG_LEVEL_ERROR, L"GQCS return 0 [%d] session id : %lld Count %d", error_code, session->GetSessionID(), cnt);
+			
+
+				//OnError(error_code, L"GQCS return 0");
 				break;
 
 			}
@@ -417,8 +444,9 @@ inline void CNetServer::RunIoThread()
 				if (session->recv_sock != session->sock)
 					log_arr[2]++;
 				//tracer.trace(21, session, session->session_id);
+#ifdef MONITOR
 				QueryPerformanceCounter(&recv_start);
-
+#endif
 
 				session->recv_q.MoveRear(cbTransferred);
 				// msg 확인
@@ -454,18 +482,24 @@ inline void CNetServer::RunIoThread()
 						Disconnect(session);
 					}
 
+#ifdef MONITOR
 					QueryPerformanceCounter(&on_recv_st);
-					OnRecv(*(unsigned long long*) & session->session_id, packet);
+#endif
+					OnRecv(session->GetSessionID(), packet);
+#ifdef MONITOR
 					QueryPerformanceCounter(&on_recv_ed);
 					monitor.AddOnRecvTime(&on_recv_st, &on_recv_ed);
+#endif
 
 					CPacket::Free(packet);
 #endif
 
 				}
+#ifdef MONITOR
 				QueryPerformanceCounter(&recv_end);
 				monitor.AddRecvCompTime(&recv_start, &recv_end);
 				monitor.IncRecv();
+#endif
 
 				//tracer.trace(22, session, session->session_id);
 				bool ret_recv = RecvPost(session);
@@ -473,15 +507,19 @@ inline void CNetServer::RunIoThread()
 			}
 			else if (&session->send_overlapped == overlapped) // send 결과 처리
 			{
+#ifdef MONITOR
 				QueryPerformanceCounter(&send_start);
 				monitor.AddSendToComp(&session->send_time, &send_start);
+#endif
 
 				OnSend(*(unsigned long long*) & session->session_id, cbTransferred);
 				if (session->send_sock != session->sock)
 					CrashDump::Crash();
 				//tracer.trace(31, session, session->session_id);
 
+#ifdef MONITOR
 				monitor.UpdateSendPacket(cbTransferred);
+#endif
 
 				int packet_cnt = session->send_packet_cnt;
 				if (packet_cnt == 0)
@@ -498,7 +536,9 @@ inline void CNetServer::RunIoThread()
 #else
 				while (packet_cnt > 0)
 				{
+#ifdef MONITOR
 					monitor.IncSendPacket(); // 실제로 보낸 Packet 수
+#endif
 					session->temp_packet[--packet_cnt]->SubRef();
 				}
 #endif
@@ -506,8 +546,10 @@ inline void CNetServer::RunIoThread()
 				session->send_packet_cnt = 0;
 				session->send_flag = false;
 
+#ifdef MONITOR
 				QueryPerformanceCounter(&send_end);
 				monitor.AddSendCompTime(&send_start, &send_end);
+#endif 
 
 				//tracer.trace(32, session, session->session_id);
 				if (session->send_q.GetSize() > 0)
@@ -625,6 +667,8 @@ bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 			else
 			{
 				packet->SubRef();
+
+				Log(L"SYS", enLOG_LEVEL_ERROR, L"Full Send Q %lld", session->GetSessionID());
 			}
 		}
 		else
@@ -636,11 +680,12 @@ bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 
 
 
-
+#ifdef MONITOR
 	if (!ret)   // 필요하지 않은듯
 	{
 		monitor.IncNoSession();
 	}
+#endif
 
 	return ret;
 }
@@ -738,6 +783,8 @@ inline bool CNetServer::RecvPost(Session* session)
 		{
 			if ((error_code = WSAGetLastError()) != ERROR_IO_PENDING)
 			{ // 요청이 실패
+				if (error_code != WSAECONNRESET)
+					Log(L"SYS", enLOG_LEVEL_ERROR, L"Recv Failed [%d] session : %lld", error_code, session->GetSessionID());
 				LeaveSession(session);
 				int io_temp = UpdateIOCount(session);
 #ifdef TRACE_SERVER
@@ -831,22 +878,29 @@ inline void CNetServer::SendPost(Session* session)
 
 				session->send_packet_cnt = buf_cnt;
 				DWORD sendbytes;
+#ifdef MONITOR
 				monitor.IncSend();
+#endif 
 
 				SOCKET socket = session->sock;
 				session->send_sock = socket;
+
+#ifdef MONITOR
 				QueryPerformanceCounter(&session->send_time);
+#endif
 				retval = WSASend(socket, wsabuf, buf_cnt, NULL, 0, &session->send_overlapped, NULL);
+#ifdef MONITOR
 				QueryPerformanceCounter(&end);
 				monitor.AddSendTime(&session->send_time, &end);
+#endif
 
 				DWORD error_code;
 				if (retval == SOCKET_ERROR)
 				{
 					if ((error_code = WSAGetLastError()) != WSA_IO_PENDING) // 요청 자체가 실패
 					{
-						// 내가 release 시켜야하는 경우 Packet 해제 해줘야 함
-						
+						if(error_code != WSAECONNRESET)
+							Log(L"SYS", enLOG_LEVEL_ERROR, L"Send Failed [%d] session : %lld", error_code, session->GetSessionID());
 						int io_temp = UpdateIOCount(session);
 #ifdef TRACE_SERVER
 						tracer.trace(2, session, error_code, socket);
@@ -1015,6 +1069,14 @@ void CNetServer::LeaveSession(Session* session)
 
 void CNetServer::Show()
 {
+#ifdef MONITOR
 	monitor.Show(m_sessionCnt, CPacket::GetUsePool(), 0);
+#endif
+	wprintf(L"-----------------------------------------\n");
+	wprintf(L"Total Accept : %d | Accept Error : %d\n", m_totalAccept, m_acceptErr);
+	wprintf(L"Session: %d\n", m_sessionCnt);
+	wprintf(L"PacketPool Use: %d\n", CPacket::GetUsePool());
+
+
 	return;
 }

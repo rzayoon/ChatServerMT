@@ -48,9 +48,6 @@ private:
 	unordered_map<SS_ID, User*> m_userMap[dfUSER_MAP_HASH];
 	SRWLOCK m_userMapCS[dfUSER_MAP_HASH];
 	
-public:
-
-	alignas(64) LONG runningWorker;
 
 private:
 

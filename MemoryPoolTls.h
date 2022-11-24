@@ -13,7 +13,7 @@ class MemoryPoolTls
 	enum
 	{
 		MAX_THREAD = 200,
-		DEFAULT_SIZE = 500
+		DEFAULT_SIZE = 200
 	};
 
 	struct BLOCK_NODE

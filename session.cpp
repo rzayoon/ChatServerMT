@@ -31,3 +31,8 @@ void Session::Unlock()
 {
 	LeaveCriticalSection(&session_cs);
 }
+
+unsigned long long Session::GetSessionID()
+{
+	return *((unsigned long long*)&session_id);
+}

@@ -13,6 +13,8 @@ using std::unordered_map;
 #include "CrashDump.h"
 #include "ProfileTls.h"
 
+#include "CLog.h"
+
 extern ChatServer g_chatServer;
 
 bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
@@ -75,8 +77,8 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 				CPacket::Free(send_packet);*/
 
 				InterlockedIncrement(&g_chatServer.m_duplicateLogin);
-
-				g_chatServer.DisconnectSession(temp_user->session_id);
+				Log(L"SYS", enLOG_LEVEL_ERROR, L"Duplicated Login : session id[%lld]", temp_user->session_id);
+				//g_chatServer.DisconnectSession(temp_user->session_id);
 
 				ret = true;
 			}

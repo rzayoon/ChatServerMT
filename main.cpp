@@ -39,6 +39,7 @@ int main()
 	int max_session;
 	int packet_code;
 	int packet_key;
+	int nagle;
 
 	TextParser parser;
 	if (!parser.LoadFile("Config.ini")) return 1;
@@ -52,7 +53,7 @@ int main()
 	parser.GetValue("PacketCode", &packet_code);
 	parser.GetValue("PacketKey", &packet_key);
 
-	
+	parser.GetValue("Nagle", &nagle);
 
 	wchar_t wip[16];
 
@@ -60,7 +61,7 @@ int main()
 
 	SYSLOG_Init(L"Log", enLOG_LEVEL_DEBUG);
 
-	g_chatServer.Start(wip, port, worker, max_worker, max_session, 1, packet_key, packet_code);
+	g_chatServer.Start(wip, port, worker, max_worker, max_session, nagle, packet_key, packet_code);
 	CCpuUsage CpuTime;
 
 
