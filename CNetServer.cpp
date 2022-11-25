@@ -233,8 +233,7 @@ inline void CNetServer::RunAcceptThread()
 #endif
 
 	// nagle
-	if (m_nagle == 0)
-		setsockopt(listenSock, IPPROTO_TCP, TCP_NODELAY, (char*)&m_nagle, sizeof(m_nagle));
+	setsockopt(listenSock, IPPROTO_TCP, TCP_NODELAY, (char*)&m_nagle, sizeof(m_nagle));
 
 	// RST로 종료
 	LINGER linger;
@@ -420,7 +419,7 @@ inline void CNetServer::RunIoThread()
 		session->pending_tracer.trace(enRetGQCS, (unsigned long long)overlapped, cbTransferred);
 #endif
 
-		if (cbTransferred == 0 || session->disconnect) // Pending 후 I/O 처리 실패
+		if (cbTransferred == 0 || session->disconnect) // Pending 후 IO 처리 실패 OR PostQueue 결과
 		{
 #ifdef TRACE_SERVER
 			tracer.trace(78, session, session->session_id);
@@ -432,7 +431,7 @@ inline void CNetServer::RunIoThread()
 				SendPost(session);
 
 			}
-			else if (!session->leave_flag)
+			else if (&session->recv_overlapped == overlapped && !session->leave_flag) // Send 실패는 감지 안함..
 			{
 				LeaveSession(session);
 			}
@@ -974,7 +973,7 @@ void CNetServer::CancelIOSession(Session* session)
 			session->pending_tracer.trace(enCancelIO, session->sock, GetTickCount64());
 #endif
 			InterlockedIncrement((LONG*)&session->io_count);
-			PostQueuedCompletionStatus(m_hcp, 0, (ULONG_PTR)session, NULL);
+			PostQueuedCompletionStatus(m_hcp, 0, (ULONG_PTR)session, &session->recv_overlapped); // io 없는 경우 Leave 호출 안하는 것 대비.. Leave 자체를 Post 하면 필요없다.
 			CancelIoEx((HANDLE)session->sock, NULL);
 		}
 	}

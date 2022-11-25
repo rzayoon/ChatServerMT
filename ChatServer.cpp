@@ -200,7 +200,7 @@ bool ChatServer::AcquireUser(SS_ID s_id, User** user)
 	AcquireSRWLockShared(&m_userMapCS[idx]);
 	auto iter = m_userMap[idx].find(s_id);
 	if (iter == m_userMap[idx].end())
-		ret = false;
+		CrashDump::Crash(); // 발생하면 결함
 	else 
 	{
 		*user = iter->second;
