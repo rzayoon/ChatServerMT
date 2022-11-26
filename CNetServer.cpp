@@ -461,6 +461,11 @@ inline void CNetServer::RunIoThread()
 					if (header.len + sizeof(header) > q_size)
 						break;
 
+					if (header.len > session->recv_q.GetEmptySize()) {
+						Log(L"SYS", enLOG_LEVEL_DEBUG, L"Header Length Error %d", header.len);
+						Disconnect(session);
+					}
+
 #ifdef AUTO_PACKET
 					PacketPtr packet = CPacket::Alloc();
 					int ret_deq = session->recv_q.Dequeue((*packet)->GetBufferPtr(), header.len);
