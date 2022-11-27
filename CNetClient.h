@@ -151,5 +151,31 @@ private:
 	alignas(64) char _b;
 
 	CPacket* m_sentPacket[200];
+
+
+
+protected:
+	// 필요하면 Child Class 에서 재구현
+	virtual CPacket* AllocPacket()
+	{
+		return CPacket::Alloc();
+	}
+
+	virtual void FreePacket(CPacket* packet)
+	{
+		CPacket::Free(packet);
+	}
+
+	virtual void SetPacket(unsigned char packetCode, unsigned char packetKey)
+	{
+		CPacket::SetPacketCode(packetCode);
+		CPacket::SetPacketKey(packetKey);
+
+	}
+
+	virtual int GetUsePool()
+	{
+		return CPacket::GetUsePool();
+	}
 };
 

@@ -2,14 +2,12 @@
 #include "CPacket.h"
 
 
-
-class ChatPacket : public CPacket
+class MonitorPacket :
+    public CPacket
 {
-	
-
 public:
 
-	inline static MemoryPoolTls<ChatPacket> packet_pool = MemoryPoolTls<ChatPacket>(500);
+	inline static MemoryPoolTls<MonitorPacket> packet_pool = MemoryPoolTls<MonitorPacket>(500);
 	inline static unsigned char packet_code = 0;
 	inline static unsigned char packet_key = 0;
 
@@ -36,9 +34,9 @@ public:
 		return packet_key;
 	}
 
-	inline static ChatPacket* Alloc()
+	inline static MonitorPacket* Alloc()
 	{
-		ChatPacket* packet = packet_pool.Alloc();
+		MonitorPacket* packet = packet_pool.Alloc();
 		packet->Clear();
 		return packet;
 	}
@@ -56,4 +54,7 @@ public:
 			packet_pool.Free(this);
 		return;
 	}
+
+
 };
+

@@ -160,6 +160,7 @@
     <ClCompile Include="CrashDump.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MonitorClient.cpp" />
+    <ClCompile Include="MonitorPacket.cpp" />
     <ClCompile Include="PacketMaker.cpp" />
     <ClCompile Include="monitor.cpp" />
     <ClCompile Include="ProcPacket.cpp" />
@@ -187,6 +188,7 @@
     <ClInclude Include="LockFreeQueue.h" />
     <ClInclude Include="LockFreeStack.h" />
     <ClInclude Include="MonitorClient.h" />
+    <ClInclude Include="MonitorPacket.h" />
     <ClInclude Include="PacketMaker.h" />
     <ClInclude Include="MemoryPoolTls.h" />
     <ClInclude Include="monitor.h" />

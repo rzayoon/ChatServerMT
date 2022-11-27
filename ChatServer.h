@@ -32,10 +32,8 @@ private:
 
 	void OnError(int errorcode, const wchar_t* msg);
 
-	void SetPacket(unsigned char code, unsigned char key);
-
-	CPacket* AllocPacket() { return ChatPacket::Alloc(); }
-	void FreePacket(CPacket* packet) { ChatPacket::Free(packet); }
+	
+	
 
 private:
 
@@ -73,6 +71,23 @@ private:
 	HANDLE h_timeOutThread;
 	alignas(64) bool m_runTimeCheck;
 
+public:
+	CPacket* AllocPacket() { return ChatPacket::Alloc(); }
+	void FreePacket(CPacket* packet) { ChatPacket::Free((ChatPacket*)packet); }
+	void SetPacket(unsigned char code, unsigned char key)
+	{
+		ChatPacket::SetPacketCode(code);
+		ChatPacket::SetPacketKey(key);
+
+	}
+
+	int GetUsePool()
+	{
+		return ChatPacket::packet_pool.GetUseSize();
+	}
+
+	unsigned int m_CollectMessageTPS;
+	void Collect();
 };
 
 DWORD TimeOutThread(PVOID param);
