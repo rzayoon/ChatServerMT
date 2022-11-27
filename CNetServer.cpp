@@ -41,8 +41,7 @@ bool CNetServer::Start(const wchar_t* ip, unsigned short port,
 	m_packetKey = packetKey;
 	m_packetCode = packetCode;
 
-	CPacket::SetPacketCode(m_packetCode);
-	CPacket::SetPacketKey(m_packetKey);
+	SetPacket(packetCode, packetKey);
 
 
 
@@ -477,14 +476,10 @@ inline void CNetServer::RunIoThread()
 					QueryPerformanceCounter(&on_recv_ed);
 					monitor.AddOnRecvTime(&on_recv_st, &on_recv_ed);
 #else
-					CPacket* packet = CPacket::Alloc();
+					CPacket* packet = AllocPacket();
 					int ret_deq = session->recv_q.Dequeue(packet->GetBufferPtrNet(), header.len + sizeof(header));
 					packet->MoveWritePos(header.len);
-					if (!packet->Decode())
-					{
-						Log(L"SYS", enLOG_LEVEL_DEBUG, L"Packet Error");
-						Disconnect(session);
-					}
+					
 
 #ifdef MONITOR
 					QueryPerformanceCounter(&on_recv_st);
@@ -495,7 +490,7 @@ inline void CNetServer::RunIoThread()
 					monitor.AddOnRecvTime(&on_recv_st, &on_recv_ed);
 #endif
 
-					CPacket::Free(packet);
+					FreePacket(packet);
 #endif
 
 				}

@@ -307,16 +307,18 @@ void CPacket::Encode()
 		sum += buf[i];
 	}
 
+	unsigned char key = GetPacketKey();
+
 	header->check_sum = sum;
 	buf = (unsigned char*)&header->check_sum; // 여기부터 해야함
 	for (int i = 0; i <= data_size; i++)
 	{
 		p = buf[i] ^ (p + r_key + i + 1);
-		e = p ^ (e + packet_key + i + 1);
+		e = p ^ (e + key + i + 1);
 		buf[i] = e;
 	}
 
-	header->code = packet_code;
+	header->code = GetPacketCode();
 	header->len = data_size;
 	header->rand_key = r_key;
 
@@ -335,9 +337,11 @@ bool CPacket::Decode()
 	unsigned char d = 0;
 	unsigned char e = 0;
 
+	unsigned char key = GetPacketKey();
+
 	for (int i = 0; i <= data_size; i++)
 	{
-		p = buf[i] ^ (e + packet_key + i + 1);
+		p = buf[i] ^ (e + key + i + 1);
 		e = buf[i];
 		d = p ^ (old_p + r_key + i + 1);
 		old_p = p;

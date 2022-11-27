@@ -2,6 +2,7 @@
 #include "User.h"
 #include "CommonProtocol.h"
 
+
 void PacketMaker::MakeLogin(CPacket* packet, BYTE status, __int64 account_no)
 {
 	WORD type = en_PACKET_CS_CHAT_RES_LOGIN;
