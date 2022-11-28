@@ -1,6 +1,6 @@
 #pragma once
-#include "CNetServer.h"
-#include "ChatPacket.h"
+
+
 
 
 
@@ -16,7 +16,6 @@ public:
 	ChatServer();
 	virtual ~ChatServer();
 
-	
 
 private:
 	bool OnConnectionRequest(wchar_t* ip, unsigned short port);
@@ -32,10 +31,6 @@ private:
 
 	void OnError(int errorcode, const wchar_t* msg);
 
-	void SetPacket(unsigned char code, unsigned char key);
-
-	CPacket* AllocPacket() { return ChatPacket::Alloc(); }
-	void FreePacket(CPacket* packet) { ChatPacket::Free(packet); }
 
 private:
 
@@ -66,7 +61,7 @@ private:
 public:
 	void Show();
 	void CheckTimeOut();
-	void SendMonitor(int time_stamp);
+
 
 private:
 

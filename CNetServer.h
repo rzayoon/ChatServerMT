@@ -138,10 +138,6 @@ public:
 	/// </summary>
 	void Show();
 
-
-	
-
-	
 private:
 
 

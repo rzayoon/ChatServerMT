@@ -12,12 +12,11 @@
 #include <unordered_map>
 using std::unordered_map;
 
-
+#include "CNetServer.h"
 #include "User.h"
 #include "MemoryPoolTls.h"
 
 #include "ChatServer.h"
-#include "MonitorClient.h"
 #include "TextParser.h"
 #include "ProfileTls.h"
 #include "CCpuUsage.h"
@@ -45,14 +44,14 @@ int main()
 	TextParser parser;
 	if (!parser.LoadFile("Config.ini")) return 1;
 
-	parser.GetStringValue("ChatBindIP ", ip, 16);
-	parser.GetValue("ChatBindPort", &port);
-	parser.GetValue("ChatIOCPWorker", &worker);
-	parser.GetValue("ChatIOCPActive", &max_worker);
+	parser.GetStringValue("ServerBindIP", ip, 16);
+	parser.GetValue("ServerBindPort", &port);
+	parser.GetValue("IOCPWorkerThread", &worker);
+	parser.GetValue("IOCPActiveThread", &max_worker);
 	parser.GetValue("MaxUser", &max_user);
 	parser.GetValue("MaxSession", &max_session);
-	parser.GetValue("ChatPacketCode", &packet_code);
-	parser.GetValue("ChatPacketKey", &packet_key);
+	parser.GetValue("PacketCode", &packet_code);
+	parser.GetValue("PacketKey", &packet_key);
 
 	parser.GetValue("Nagle", &nagle);
 
@@ -63,18 +62,8 @@ int main()
 	SYSLOG_Init(L"Log", enLOG_LEVEL_DEBUG);
 
 	g_chatServer.Start(wip, port, worker, max_worker, max_session, nagle, packet_key, packet_code);
-	
-	parser.GetStringValue("MonitorIP", ip, 16);
-	MultiByteToWideChar(CP_ACP, 0, ip, 16, wip, 16);
-	parser.GetValue("MonitorPort", &port);
-	parser.GetValue("MonitorIOCPWorker", &worker);
-	parser.GetValue("MonitorIOCPActive", &max_worker);
-	parser.GetValue("MonitorPacketCode", &packet_code);
-	parser.GetValue("MonitorPacketKey", &packet_key);
-
-	g_monitorCli.Connect(wip, port, worker, max_worker, nagle, packet_key, packet_code);
-
 	CCpuUsage CpuTime;
+
 
 	DWORD oldTick = timeGetTime();
 	while (1)
@@ -97,13 +86,10 @@ int main()
 
 		Sleep(1000);
 
-		//Monitor Àü¼Û
-		{
-			g_chatServer.Show();
-			CpuTime.Show();
 
-
-		}
+		g_chatServer.Show();
+		
+		CpuTime.Show();
 	}
 
 	timeEndPeriod(1);

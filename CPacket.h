@@ -15,7 +15,6 @@
 class CPacket
 {
 	friend class CNetServer;
-	friend class CNetClient;
 	friend class PacketPtr;
 	friend class MemoryPoolTls<CPacket>;
 
@@ -25,7 +24,7 @@ public:
 		eBUFFER_DEFAULT = 2000
 	};
 
-protected:	
+private:	
 
 
 	CPacket(int size = eBUFFER_DEFAULT);
@@ -177,7 +176,6 @@ public:
 		return;
 	}
 
-
 	/// <summary>
 	/// Packet의 데이터 인코딩
 	/// 하나의 패킷에 대해 전체 스레드에서 1회만 호출되어야 함.
@@ -195,10 +193,7 @@ private:
 	char* GetBufferPtrNet(void);
 	int GetDataSizeNet(void);
 
-protected:
-	// 정적 멤버
-	inline static MemoryPoolTls<CPacket> packet_pool = MemoryPoolTls<CPacket>(500);
-	
+
 	inline static int GetUsePool()
 	{
 		return packet_pool.GetUseSize();
@@ -214,10 +209,12 @@ protected:
 		packet_key = key;
 	}
 
+protected:
 
+	// 정적 멤버
+	inline static MemoryPoolTls<CPacket> packet_pool = MemoryPoolTls<CPacket>(500);
 	inline static unsigned char packet_code = 0;
 	inline static unsigned char packet_key = 0;
-
 	// 고정 
 	char* buffer;
 	char* hidden_buf;

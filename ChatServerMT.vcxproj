@@ -150,16 +150,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CCpuUsage.cpp" />
-    <ClCompile Include="ChatPacket.cpp" />
     <ClCompile Include="ChatServer.cpp" />
     <ClCompile Include="CLog.cpp" />
-    <ClCompile Include="CNetClient.cpp" />
     <ClCompile Include="CNetServer.cpp" />
     <ClCompile Include="CPacket.cpp" />
-    <ClCompile Include="CPDH.cpp" />
     <ClCompile Include="CrashDump.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="MonitorClient.cpp" />
     <ClCompile Include="PacketMaker.cpp" />
     <ClCompile Include="monitor.cpp" />
     <ClCompile Include="ProcPacket.cpp" />
@@ -173,20 +169,16 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CCpuUsage.h" />
-    <ClInclude Include="ChatPacket.h" />
     <ClInclude Include="ChatProtocol.h" />
     <ClInclude Include="ChatServer.h" />
     <ClInclude Include="CLog.h" />
-    <ClInclude Include="CNetClient.h" />
     <ClInclude Include="CNetServer.h" />
     <ClInclude Include="CommonProtocol.h" />
     <ClInclude Include="CPacket.h" />
-    <ClInclude Include="CPDH.h" />
     <ClInclude Include="CrashDump.h" />
     <ClInclude Include="LockFreePool.h" />
     <ClInclude Include="LockFreeQueue.h" />
     <ClInclude Include="LockFreeStack.h" />
-    <ClInclude Include="MonitorClient.h" />
     <ClInclude Include="PacketMaker.h" />
     <ClInclude Include="MemoryPoolTls.h" />
     <ClInclude Include="monitor.h" />
