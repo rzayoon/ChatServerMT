@@ -67,8 +67,7 @@ public:
 	/// </summary>
 	/// <param name="session_id"></param>
 	void DisconnectSession(unsigned long long session_id);
-
-	
+	int GetSessionCount();
 
 
 #ifdef AUTO_PACKET
@@ -139,10 +138,6 @@ public:
 	/// </summary>
 	void Show();
 
-
-	
-
-	
 private:
 
 
@@ -204,37 +199,5 @@ private:
 	alignas(64) int m_sessionCnt = 0;
 	alignas(64) int m_totalAccept = 0;
 	int m_acceptErr = 0;
-
-public:
-
-	int GetSessionCount(void)
-	{
-		return m_sessionCnt;
-	}
-
-protected:
-	// 필요하면 Child Class 에서 재구현
-	virtual CPacket* AllocPacket()
-	{
-		return CPacket::Alloc();
-	}
-
-	virtual void FreePacket(CPacket* packet)
-	{
-		CPacket::Free(packet);
-	}
-
-	virtual void SetPacket(unsigned char packetCode, unsigned char packetKey)
-	{
-		CPacket::SetPacketCode(packetCode);
-		CPacket::SetPacketKey(packetKey);
-
-	}
-
-	virtual int GetUsePool()
-	{
-		return CPacket::GetUsePool();
-	}
-
 };
 

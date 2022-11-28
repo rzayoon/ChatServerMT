@@ -15,7 +15,6 @@
 class CPacket
 {
 	friend class CNetServer;
-	friend class CNetClient;
 	friend class PacketPtr;
 	friend class MemoryPoolTls<CPacket>;
 
@@ -25,7 +24,7 @@ public:
 		eBUFFER_DEFAULT = 2000
 	};
 
-protected:	
+private:	
 
 
 	CPacket(int size = eBUFFER_DEFAULT);
@@ -143,7 +142,6 @@ public:
 		return packet;
 	}
 
-
 	/// <summary>
 	/// Packet 반환
 	/// 이 함수를 호출한 뒤에는 packet을 사용해서는 안된다.
@@ -170,14 +168,13 @@ public:
 	/// subref 이후에는 바로 다른 스레드에서 사용할 여지가 있으므로 
 	/// 건드리지 않는다.
 	/// </summary>
-	virtual inline void SubRef()
+	inline void SubRef()
 	{
 		int temp_cnt = InterlockedDecrement((LONG*)&ref_cnt);
 		if (temp_cnt == 0)
-			packet_pool.Free(this);
+			CPacket::packet_pool.Free(this);
 		return;
 	}
-
 
 	/// <summary>
 	/// Packet의 데이터 인코딩
@@ -196,10 +193,7 @@ private:
 	char* GetBufferPtrNet(void);
 	int GetDataSizeNet(void);
 
-protected:
-	// 정적 멤버
-	inline static MemoryPoolTls<CPacket> packet_pool = MemoryPoolTls<CPacket>(500);
-	
+
 	inline static int GetUsePool()
 	{
 		return packet_pool.GetUseSize();
@@ -215,12 +209,12 @@ protected:
 		packet_key = key;
 	}
 
+protected:
+
+	// 정적 멤버
+	inline static MemoryPoolTls<CPacket> packet_pool = MemoryPoolTls<CPacket>(500);
 	inline static unsigned char packet_code = 0;
 	inline static unsigned char packet_key = 0;
-
-	virtual unsigned char GetPacketCode() { return packet_code; }
-	virtual unsigned char GetPacketKey() { return packet_key; }
-
 	// 고정 
 	char* buffer;
 	char* hidden_buf;

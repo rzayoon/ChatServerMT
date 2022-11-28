@@ -37,13 +37,13 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 	{
 		// 같은 세션id에서 중복 로그인 메시지
 
-		CPacket* send_packet = ChatPacket::Alloc();
+		CPacket* send_packet = CPacket::Alloc();
 		
 		PacketMaker::MakeLogin(send_packet, 0, account_no);
 
 		g_chatServer.SendMessageUni(send_packet, user);
 
-		ChatPacket::Free(send_packet);
+		CPacket::Free(send_packet);
 		
 		ret = false;
 	}
@@ -100,12 +100,12 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 	wcscpy_s(user->id, id);
 	wcscpy_s(user->nickname, nick);
 
-	CPacket* send_packet = ChatPacket::Alloc();
+	CPacket* send_packet = CPacket::Alloc();
 
 	PacketMaker::MakeLogin(send_packet, 1, user->account_no);
 	g_chatServer.SendMessageUni(send_packet, user);
 
-	ChatPacket::Free(send_packet);
+	CPacket::Free(send_packet);
 
 	return true;
 }
@@ -212,13 +212,13 @@ bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 		ReleaseSRWLockExclusive(&g_SectorLock[lock_y[i]][lock_x[i]]);
 	}
 
-	CPacket* send_packet = ChatPacket::Alloc();
+	CPacket* send_packet = CPacket::Alloc();
 
 	PacketMaker::MakeSectorMove(send_packet, user->account_no, user->sector_x, user->sector_y);
 
 	g_chatServer.SendMessageUni(send_packet, user);
 
-	ChatPacket::Free(send_packet);
+	CPacket::Free(send_packet);
 
 	return true;
 
@@ -243,13 +243,13 @@ bool PacketProcessor::ProcMessage(User* user, CPacket* packet)
 
 	(*packet).GetData((char*)message, message_len);
 
-	CPacket* send_packet = ChatPacket::Alloc();
+	CPacket* send_packet = CPacket::Alloc();
 
 	PacketMaker::MakeMessage(send_packet, account_no, user->id, user->nickname, message_len, message);
 
 	g_chatServer.SendMessageAround(send_packet, user);
 
-	ChatPacket::Free(send_packet);
+	CPacket::Free(send_packet);
 
 	return true;
 }
