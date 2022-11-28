@@ -180,7 +180,10 @@ void CNetServer::Stop()
 	return;
 }
 
-
+inline int CNetServer::GetSessionCount()
+{
+	return m_sessionCnt;
+}
 
 unsigned long _stdcall CNetServer::AcceptThread(void* param)
 {
@@ -463,7 +466,7 @@ inline void CNetServer::RunIoThread()
 					}
 
 #ifdef AUTO_PACKET
-					PacketPtr packet = AllocPacket();
+					PacketPtr packet = CPacket::Alloc();
 					int ret_deq = session->recv_q.Dequeue((*packet)->GetBufferPtr(), header.len);
 					(*packet)->MoveWritePos(ret_deq);
 					(*packet)->Decode();
@@ -1071,7 +1074,7 @@ void CNetServer::Show()
 	wprintf(L"-----------------------------------------\n");
 	wprintf(L"Total Accept : %d | Accept Error : %d\n", m_totalAccept, m_acceptErr);
 	wprintf(L"Session: %d\n", m_sessionCnt);
-	
+	wprintf(L"PacketPool Use: %d\n", CPacket::GetUsePool());
 
 
 	return;

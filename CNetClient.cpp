@@ -24,7 +24,8 @@ bool CNetClient::Connect(const wchar_t* serverIp, unsigned short port,
 		OnError(90, L"Connected already\n");
 		return ret;
 	}
-	SetPacket(packet_code, packet_key);
+	CPacket::SetPacketKey(packet_key);
+	CPacket::SetPacketCode(packet_code);
 
 	m_nagle = nagle;
 
@@ -256,7 +257,7 @@ inline void CNetClient::RunIoThread()
 						DisconnectSession();
 
 
-					CPacket* packet = AllocPacket();
+					CPacket* packet = CPacket::Alloc();
 					int ret_deq = m_recvQ.Dequeue(packet->GetBufferPtrNet(), header.len + sizeof(header));
 					packet->MoveWritePos(header.len);
 					
@@ -266,7 +267,7 @@ inline void CNetClient::RunIoThread()
 
 					OnRecv(packet);
 
-					FreePacket(packet);
+					CPacket::Free(packet);
 				}
 				bool ret_recv = RecvPost();
 
@@ -667,7 +668,7 @@ void CNetClient::Leave()
 void CNetClient::Show()
 {
 	wprintf(L"-----------------------------------------\n");
-	wprintf(L"PacketPool Use: %d\n", GetUsePool());
+	wprintf(L"PacketPool Use: %d\n", CPacket::GetUsePool());
 
 
 	return;

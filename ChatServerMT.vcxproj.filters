@@ -78,9 +78,6 @@
     <ClCompile Include="ChatPacket.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="MonitorPacket.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChatProtocol.h">
@@ -165,9 +162,6 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="ChatPacket.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="MonitorPacket.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

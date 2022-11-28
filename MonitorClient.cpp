@@ -13,13 +13,12 @@ MonitorClient::MonitorClient()
 
 MonitorClient::~MonitorClient()
 {
-
 }
 
 void MonitorClient::OnEnterServerJoin()
 {
 	// 로그인 요청
-	CPacket* sendPacket = MonitorPacket::Alloc();
+	CPacket* sendPacket = CPacket::Alloc();
 
 	WORD type = en_PACKET_SS_MONITOR_LOGIN;
 	int no = 3;
@@ -28,7 +27,7 @@ void MonitorClient::OnEnterServerJoin()
 
 	SendPacket(sendPacket);
 
-	MonitorPacket::Free(sendPacket);
+	CPacket::Free(sendPacket);
 
 	return;
 }

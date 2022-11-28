@@ -198,7 +198,12 @@ void ChatServer::OnError(int errorcode, const wchar_t* msg)
 	return;
 }
 
+void ChatServer::SetPacket(unsigned char code, unsigned char key)
+{
+	ChatPacket::SetPacketCode(code);
+	ChatPacket::SetPacketKey(key);
 
+}
 
 
 
@@ -384,14 +389,13 @@ void ChatServer::Show()
 		user_cnt += m_userMap[i].size();
 	}
 
-	
-	wprintf(L"PacketPool Use: %d\n", GetUsePool());
+	unsigned int message_tps = InterlockedExchange(&m_messageTps, 0);
 	wprintf(L"Connect : %d\n"
 		L"Login : %d\n"
 		L"Duplicated login proc : %d\n"
 		L"Message TPS : %d\n"
 		L"User : %d\n",
-		m_connectCnt, m_loginCnt, m_duplicateLogin, m_CollectMessageTPS, user_cnt);
+		m_connectCnt, m_loginCnt, m_duplicateLogin, message_tps, user_cnt);
 
 
 }
@@ -426,59 +430,10 @@ void ChatServer::SendMonitor(int time_stamp)
 	//------------------------------------------------------------
 	
 	WORD type = en_PACKET_SS_MONITOR_DATA_UPDATE;
-	BYTE data_type;
-	int data_val;
 
-	// 세션
-	CPacket* send_packet;
-	send_packet = MonitorPacket::Alloc();
-	data_type = dfMONITOR_DATA_TYPE_CHAT_SESSION;
-	data_val = GetSessionCount();
-	*send_packet << type << data_type << data_val << time_stamp;
-	send_packet->Encode();
 
-	g_monitorCli.SendPacket(send_packet);
-	MonitorPacket::Free(send_packet);
+	
 
-	// 로그인
-	send_packet = MonitorPacket::Alloc();
-	data_type = dfMONITOR_DATA_TYPE_CHAT_PLAYER;
-	data_val = m_loginCnt;
-	*send_packet << type << data_type << data_val << time_stamp;
-	send_packet->Encode();
-
-	g_monitorCli.SendPacket(send_packet);
-	MonitorPacket::Free(send_packet);
-
-	// MessageTPS
-	send_packet = MonitorPacket::Alloc();
-	data_type = dfMONITOR_DATA_TYPE_CHAT_UPDATE_TPS;
-	data_val = m_CollectMessageTPS;
-	*send_packet << type << data_type << data_val << time_stamp;
-	send_packet->Encode();
-
-	g_monitorCli.SendPacket(send_packet);
-	MonitorPacket::Free(send_packet);
-
-	// PacketPool
-	send_packet = MonitorPacket::Alloc();
-	data_type = dfMONITOR_DATA_TYPE_CHAT_PACKET_POOL;
-	data_val = GetUsePool();
-	*send_packet << type << data_type << data_val << time_stamp;
-	send_packet->Encode();
-
-	g_monitorCli.SendPacket(send_packet);
-	MonitorPacket::Free(send_packet);
-
-	return;
-
-}
-
-void ChatServer::Collect()
-{
-	m_CollectMessageTPS = InterlockedExchange(&m_messageTps, 0);
-
-	return;
 }
 
 void ChatServer::CheckTimeOut()

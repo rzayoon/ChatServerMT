@@ -8,7 +8,6 @@
 
 #include <stdio.h>
 #include <conio.h>
-#include <time.h>
 
 #include <unordered_map>
 using std::unordered_map;
@@ -100,11 +99,6 @@ int main()
 
 		//Monitor Àü¼Û
 		{
-			int stamp = time(NULL);
-
-			g_chatServer.Collect();
-			g_chatServer.SendMonitor(stamp);
-
 			g_chatServer.Show();
 			CpuTime.Show();
 
