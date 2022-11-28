@@ -12,8 +12,6 @@
 #include "CrashDump.h"
 #include "CLog.h"
 
-long long packet_counter[101];
-int log_arr[100];
 
 alignas(64) LONG SEMTIMEOUT = 0;
 alignas(64) LONG ABORTEDBYLOCAL = 0;
@@ -181,10 +179,6 @@ void CNetServer::Stop()
 	return;
 }
 
-inline int CNetServer::GetSessionCount()
-{
-	return m_sessionCnt;
-}
 
 unsigned long _stdcall CNetServer::AcceptThread(void* param)
 {
@@ -440,8 +434,7 @@ inline void CNetServer::RunIoThread()
 		else {
 			if (&session->recv_overlapped == overlapped) // recv 결과 처리
 			{
-				if (session->recv_sock != session->sock)
-					log_arr[2]++;
+
 				//tracer.trace(21, session, session->session_id);
 #ifdef MONITOR
 				QueryPerformanceCounter(&recv_start);
@@ -461,9 +454,11 @@ inline void CNetServer::RunIoThread()
 					if (header.len + sizeof(header) > q_size)
 						break;
 
-					if (header.len > session->recv_q.GetEmptySize()) {
+					if (header.len == 0 || header.len > session->recv_q.GetEmptySize()) {
 						Log(L"SYS", enLOG_LEVEL_DEBUG, L"Header Length Error %d", header.len);
 						Disconnect(session);
+
+						break;
 					}
 
 #ifdef AUTO_PACKET
@@ -675,10 +670,7 @@ bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 				Log(L"SYS", enLOG_LEVEL_ERROR, L"Full Send Q %lld", session->GetSessionID());
 			}
 		}
-		else
-		{
-			log_arr[5]++;
-		}
+
 	}
 	UpdateIOCount(session);
 
@@ -836,7 +828,6 @@ inline void CNetServer::SendPost(Session* session)
 			long long buf_cnt = session->send_q.GetSize();
 			if (buf_cnt <= 0)
 			{
-				log_arr[8]++;
 				session->send_flag = false;
 			}
 			else

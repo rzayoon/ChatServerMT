@@ -1,7 +1,7 @@
 #pragma once
-
-
-
+#include "MonitorClient.h"
+#include "CCpuUsage.h"
+#include "CPDH.h"
 
 
 #define dfUSER_MAP_HASH 1
@@ -67,6 +67,26 @@ private:
 
 	HANDLE h_timeOutThread;
 	alignas(64) bool m_runTimeCheck;
+
+	MonitorClient m_monitorCli;
+	CCpuUsage m_CpuTime;
+	CPDH m_pdh;
+
+	unsigned int m_collectMsgTPS;
+
+
+public:
+
+	void Collect();
+
+	bool IsConnectedMonitor()
+	{
+		return m_monitorCli.IsConnected();
+	}
+	bool ConnectMonitor(const wchar_t* serverIp, unsigned short port,
+		int iocpWorker, int iocpActive, bool nagle);
+
+	void SendMonitor(int time_stamp);
 
 };
 

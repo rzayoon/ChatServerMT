@@ -66,6 +66,15 @@
     <ClCompile Include="CLog.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="CLanClient.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="MonitorClient.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="CPDH.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChatProtocol.h">
@@ -138,6 +147,15 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="CLog.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="CLanClient.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="MonitorClient.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="CPDH.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

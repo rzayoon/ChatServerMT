@@ -67,7 +67,7 @@ public:
 	/// </summary>
 	/// <param name="session_id"></param>
 	void DisconnectSession(unsigned long long session_id);
-	int GetSessionCount();
+	
 
 
 #ifdef AUTO_PACKET
@@ -137,6 +137,9 @@ public:
 	/// 라이브러리 Monitoring 정보 출력
 	/// </summary>
 	void Show();
+
+
+	int GetSessionCount() { return m_sessionCnt; }
 
 private:
 

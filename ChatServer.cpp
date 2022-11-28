@@ -37,9 +37,11 @@ ChatServer::ChatServer()
 	m_loginCnt = 0;
 	m_duplicateLogin = 0;
 	m_messageTps = 0;
-
+	m_collectMsgTPS = 0;
 
 	m_runTimeCheck = true;
+
+	m_pdh.Init();
 
 	h_timeOutThread = CreateThread(NULL, 0, TimeOutThread, (PVOID)&m_runTimeCheck, 0, NULL);
 }
@@ -372,15 +374,15 @@ void ChatServer::Show()
 		user_cnt += m_userMap[i].size();
 	}
 
-	unsigned int message_tps = InterlockedExchange(&m_messageTps, 0);
+	
 	wprintf(L"Connect : %d\n"
 		L"Login : %d\n"
 		L"Duplicated login proc : %d\n"
 		L"Message TPS : %d\n"
 		L"User : %d\n",
-		m_connectCnt, m_loginCnt, m_duplicateLogin, message_tps, user_cnt);
+		m_connectCnt, m_loginCnt, m_duplicateLogin, m_collectMsgTPS, user_cnt);
 
-
+	m_CpuTime.Show();
 }
 
 void ChatServer::CheckTimeOut()
@@ -422,6 +424,42 @@ void ChatServer::CheckTimeOut()
 
 
 
+}
+
+void ChatServer::Collect()
+{
+	m_collectMsgTPS = InterlockedExchange(&m_messageTps, 0);
+	m_CpuTime.UpdateCpuTime();
+	m_pdh.Collect();
+}
+
+bool ChatServer::ConnectMonitor(const wchar_t* serverIp, unsigned short port, int iocpWorker, int iocpActive, bool nagle)
+{
+	if(!m_monitorCli.IsConnected())
+		return m_monitorCli.Connect(serverIp, port, iocpWorker, iocpActive, nagle);
+	return false;
+}
+
+void ChatServer::SendMonitor(int time_stamp)
+{
+	int use_pool = CPacket::GetUsePool();
+
+	//Run
+	m_monitorCli.SendMonitorData(dfMONITOR_DATA_TYPE_CHAT_SERVER_RUN, 1, time_stamp);
+	// CPU 사용율
+	m_monitorCli.SendMonitorData(dfMONITOR_DATA_TYPE_CHAT_SERVER_CPU, m_CpuTime.ProcessTotal(), time_stamp);
+	// 메모리 사용 MByte
+	m_monitorCli.SendMonitorData(dfMONITOR_DATA_TYPE_CHAT_SERVER_MEM, m_pdh.GetPrivateMBytes(), time_stamp);
+	// 세션 수
+	m_monitorCli.SendMonitorData(dfMONITOR_DATA_TYPE_CHAT_SESSION, GetSessionCount(), time_stamp);
+	// 로그인 유저 수
+	m_monitorCli.SendMonitorData(dfMONITOR_DATA_TYPE_CHAT_PLAYER, m_loginCnt, time_stamp);
+	// 초당 처리 수
+	m_monitorCli.SendMonitorData(dfMONITOR_DATA_TYPE_CHAT_UPDATE_TPS, m_collectMsgTPS, time_stamp);
+	// 패킷 풀 사용량
+	m_monitorCli.SendMonitorData(dfMONITOR_DATA_TYPE_CHAT_PACKET_POOL, use_pool, time_stamp);
+
+	return;
 }
 
 DWORD TimeOutThread(PVOID param)
