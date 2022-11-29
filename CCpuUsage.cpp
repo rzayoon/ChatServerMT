@@ -111,7 +111,6 @@ void CCpuUsage::UpdateCpuTime()
 
 void CCpuUsage::Show(void)
 {
-	UpdateCpuTime();
 
 	wprintf_s(L"Processor [T: %.1f%% U: %.1f%% K: %.1f%%]\n", ProcessorTotal(), ProcessorUser(), ProcessorKernel());
 	wprintf_s(L"Process [T: %.1f%% U: %.1f%% K: %.1f%%]\n", ProcessTotal(), ProcessUser(), ProcessKernel());

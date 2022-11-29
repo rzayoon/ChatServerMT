@@ -17,6 +17,9 @@ using std::unordered_map;
 
 extern ChatServer g_chatServer;
 
+
+
+
 bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 {
 	__int64 account_no;
@@ -33,6 +36,10 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 	(*packet).GetData((char*)id, MAX_ID_SIZE * sizeof(wchar_t));
 	(*packet).GetData((char*)nick, MAX_NICK_SIZE * sizeof(wchar_t));
 	
+	char session_key[64];
+
+	(*packet).GetData((char*)session_key, 64);
+
 	if (user->is_login == true)
 	{
 		// 같은 세션id에서 중복 로그인 메시지
@@ -118,6 +125,8 @@ bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 	Profile pro = Profile(L"SectorMove");
 
 	(*packet) >> account_no >> sector_x >> sector_y;
+
+
 
 	if (account_no != user->account_no)
 	{
@@ -242,6 +251,7 @@ bool PacketProcessor::ProcMessage(User* user, CPacket* packet)
 		return false;
 
 	(*packet).GetData((char*)message, message_len);
+
 
 	CPacket* send_packet = CPacket::Alloc();
 

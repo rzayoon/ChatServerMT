@@ -67,7 +67,7 @@ public:
 	/// </summary>
 	/// <param name="session_id"></param>
 	void DisconnectSession(unsigned long long session_id);
-	int GetSessionCount();
+	
 
 
 #ifdef AUTO_PACKET
@@ -138,6 +138,9 @@ public:
 	/// </summary>
 	void Show();
 
+
+	int GetSessionCount() { return m_sessionCnt; }
+
 private:
 
 
@@ -196,8 +199,9 @@ private:
 	Tracer tracer;
 #endif
 
+	alignas(64) unsigned long long m_totalAccept = 0;
 	alignas(64) int m_sessionCnt = 0;
-	alignas(64) int m_totalAccept = 0;
+	unsigned long long m_preAccept = 0;
 	int m_acceptErr = 0;
 };
 

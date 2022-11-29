@@ -15,6 +15,9 @@
 class CPacket
 {
 	friend class CNetServer;
+	friend class CLanServer;
+	friend class CNetClient;
+	friend class CLanClient;
 	friend class PacketPtr;
 	friend class MemoryPoolTls<CPacket>;
 
@@ -187,6 +190,11 @@ public:
 	/// <returns></returns>
 	bool Decode();
 
+	inline static int GetUsePool()
+	{
+		return packet_pool.GetUseSize();
+	}
+
 private:
 	char* GetBufferPtrLan(void);
 	int GetDataSizeLan(void);
@@ -194,10 +202,7 @@ private:
 	int GetDataSizeNet(void);
 
 
-	inline static int GetUsePool()
-	{
-		return packet_pool.GetUseSize();
-	}
+
 
 	inline static void SetPacketCode(unsigned char code)
 	{

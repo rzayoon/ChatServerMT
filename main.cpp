@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <conio.h>
+#include <time.h>
 
 #include <unordered_map>
 using std::unordered_map;
@@ -40,11 +41,14 @@ int main()
 	int packet_code;
 	int packet_key;
 	int nagle;
+	SYSLOG_Init(L"Log", enLOG_LEVEL_DEBUG);
 
 	TextParser parser;
 	if (!parser.LoadFile("Config.ini")) return 1;
+	wchar_t wip[16];
 
 	parser.GetStringValue("ServerBindIP", ip, 16);
+	MultiByteToWideChar(CP_ACP, 0, ip, 16, wip, 16);
 	parser.GetValue("ServerBindPort", &port);
 	parser.GetValue("IOCPWorkerThread", &worker);
 	parser.GetValue("IOCPActiveThread", &max_worker);
@@ -55,15 +59,15 @@ int main()
 
 	parser.GetValue("Nagle", &nagle);
 
-	wchar_t wip[16];
-
-	MultiByteToWideChar(CP_ACP, 0, ip, 16, wip, 16);
-
-	SYSLOG_Init(L"Log", enLOG_LEVEL_DEBUG);
-
 	g_chatServer.Start(wip, port, worker, max_worker, max_session, nagle, packet_key, packet_code);
-	CCpuUsage CpuTime;
+	
+	parser.GetStringValue("MonitorIP", ip, 16);
+	MultiByteToWideChar(CP_ACP, 0, ip, 16, wip, 16);
+	parser.GetValue("MonitorPort", &port);
+	parser.GetValue("ClientIOCPWorker", &worker);
+	parser.GetValue("ClientIOCPActive", &max_worker);
 
+	
 
 	DWORD oldTick = timeGetTime();
 	while (1)
@@ -85,11 +89,14 @@ int main()
 		}
 
 		Sleep(1000);
+		if(!g_chatServer.IsConnectedMonitor())
+			g_chatServer.ConnectMonitor(wip, port, worker, max_worker, nagle);
 
-
+		g_chatServer.Collect();
+		if(g_chatServer.IsConnectedMonitor())
+			g_chatServer.SendMonitor(time(NULL));
 		g_chatServer.Show();
 		
-		CpuTime.Show();
 	}
 
 	timeEndPeriod(1);

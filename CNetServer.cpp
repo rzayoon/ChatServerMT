@@ -12,8 +12,6 @@
 #include "CrashDump.h"
 #include "CLog.h"
 
-long long packet_counter[101];
-int log_arr[100];
 
 alignas(64) LONG SEMTIMEOUT = 0;
 alignas(64) LONG ABORTEDBYLOCAL = 0;
@@ -181,10 +179,6 @@ void CNetServer::Stop()
 	return;
 }
 
-inline int CNetServer::GetSessionCount()
-{
-	return m_sessionCnt;
-}
 
 unsigned long _stdcall CNetServer::AcceptThread(void* param)
 {
@@ -440,8 +434,7 @@ inline void CNetServer::RunIoThread()
 		else {
 			if (&session->recv_overlapped == overlapped) // recv 결과 처리
 			{
-				if (session->recv_sock != session->sock)
-					log_arr[2]++;
+
 				//tracer.trace(21, session, session->session_id);
 #ifdef MONITOR
 				QueryPerformanceCounter(&recv_start);
@@ -461,9 +454,11 @@ inline void CNetServer::RunIoThread()
 					if (header.len + sizeof(header) > q_size)
 						break;
 
-					if (header.len > session->recv_q.GetEmptySize()) {
+					if (header.len == 0 || header.len > session->recv_q.GetEmptySize()) {
 						Log(L"SYS", enLOG_LEVEL_DEBUG, L"Header Length Error %d", header.len);
 						Disconnect(session);
+
+						break;
 					}
 
 #ifdef AUTO_PACKET
@@ -494,6 +489,13 @@ inline void CNetServer::RunIoThread()
 					QueryPerformanceCounter(&on_recv_ed);
 					monitor.AddOnRecvTime(&on_recv_st, &on_recv_ed);
 #endif
+
+					if (packet->GetDataSize() != 0)
+					{
+						Log(L"SYS", enLOG_LEVEL_ERROR, L"Packet Data remained after OnRecv(), %d bytes", packet->GetDataSize());
+						Disconnect(session);
+
+					}
 
 					CPacket::Free(packet);
 #endif
@@ -671,14 +673,11 @@ bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 			else
 			{
 				packet->SubRef();
-
 				Log(L"SYS", enLOG_LEVEL_ERROR, L"Full Send Q %lld", session->GetSessionID());
+				Disconnect(session);
 			}
 		}
-		else
-		{
-			log_arr[5]++;
-		}
+
 	}
 	UpdateIOCount(session);
 
@@ -836,7 +835,6 @@ inline void CNetServer::SendPost(Session* session)
 			long long buf_cnt = session->send_q.GetSize();
 			if (buf_cnt <= 0)
 			{
-				log_arr[8]++;
 				session->send_flag = false;
 			}
 			else
@@ -1076,11 +1074,15 @@ void CNetServer::Show()
 #ifdef MONITOR
 	monitor.Show(m_sessionCnt, CPacket::GetUsePool(), 0);
 #endif
+	unsigned long long pre = m_preAccept;
+	m_preAccept = m_totalAccept;
+	int tps = m_preAccept - pre;
+
 	wprintf(L"-----------------------------------------\n");
-	wprintf(L"Total Accept : %d | Accept Error : %d\n", m_totalAccept, m_acceptErr);
+	wprintf(L"Total Accept : %lld | TPS : %d | Accept Error : %d\n", m_totalAccept, tps, m_acceptErr);
+	
 	wprintf(L"Session: %d\n", m_sessionCnt);
 	wprintf(L"PacketPool Use: %d\n", CPacket::GetUsePool());
-
-
+	
 	return;
 }
