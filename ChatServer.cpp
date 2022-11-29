@@ -389,9 +389,6 @@ void ChatServer::CheckTimeOut()
 {
 	int iCnt;
 
-	vector<User*> disconnect_vec;
-	disconnect_vec.reserve(m_maxUser);
-
 	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
 	{
 		AcquireSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);

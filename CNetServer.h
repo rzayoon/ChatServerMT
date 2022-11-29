@@ -199,8 +199,9 @@ private:
 	Tracer tracer;
 #endif
 
+	alignas(64) unsigned long long m_totalAccept = 0;
 	alignas(64) int m_sessionCnt = 0;
-	alignas(64) int m_totalAccept = 0;
+	unsigned long long m_preAccept = 0;
 	int m_acceptErr = 0;
 };
 

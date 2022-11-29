@@ -490,6 +490,13 @@ inline void CNetServer::RunIoThread()
 					monitor.AddOnRecvTime(&on_recv_st, &on_recv_ed);
 #endif
 
+					if (packet->GetDataSize() != 0)
+					{
+						Log(L"SYS", enLOG_LEVEL_ERROR, L"Packet Data remained after OnRecv(), %d bytes", packet->GetDataSize());
+						Disconnect(session);
+
+					}
+
 					CPacket::Free(packet);
 #endif
 
@@ -666,8 +673,8 @@ bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 			else
 			{
 				packet->SubRef();
-
 				Log(L"SYS", enLOG_LEVEL_ERROR, L"Full Send Q %lld", session->GetSessionID());
+				Disconnect(session);
 			}
 		}
 
@@ -1067,11 +1074,15 @@ void CNetServer::Show()
 #ifdef MONITOR
 	monitor.Show(m_sessionCnt, CPacket::GetUsePool(), 0);
 #endif
+	unsigned long long pre = m_preAccept;
+	m_preAccept = m_totalAccept;
+	int tps = m_preAccept - pre;
+
 	wprintf(L"-----------------------------------------\n");
-	wprintf(L"Total Accept : %d | Accept Error : %d\n", m_totalAccept, m_acceptErr);
+	wprintf(L"Total Accept : %lld | TPS : %d | Accept Error : %d\n", m_totalAccept, tps, m_acceptErr);
+	
 	wprintf(L"Session: %d\n", m_sessionCnt);
 	wprintf(L"PacketPool Use: %d\n", CPacket::GetUsePool());
-
-
+	
 	return;
 }
