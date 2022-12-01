@@ -26,6 +26,8 @@ private:
 
 	void OnSend(unsigned long long session_id, int send_size);
 
+	void OnClientTimeout(unsigned long long session_id);
+
 	void OnWorkerThreadBegin();
 	void OnWorkerThreadEnd();
 
@@ -60,13 +62,11 @@ private:
 #endif
 public:
 	void Show();
-	void CheckTimeOut();
+
 
 
 private:
 
-	HANDLE h_timeOutThread;
-	alignas(64) bool m_runTimeCheck;
 
 	MonitorClient m_monitorCli;
 	CCpuUsage m_CpuTime;
@@ -90,6 +90,5 @@ public:
 
 };
 
-DWORD TimeOutThread(PVOID param);
 
 extern ChatServer g_chatServer;

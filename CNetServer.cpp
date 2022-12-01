@@ -42,31 +42,36 @@ bool CNetServer::Start(const wchar_t* ip, unsigned short port,
 	CPacket::SetPacketCode(m_packetCode);
 	CPacket::SetPacketKey(m_packetKey);
 
-
+	m_isRunning = true;
 
 	// WinSock 초기화
 	WSADATA wsa;
 	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
 	{
-		OnError(1, L"WSAStartup()\n");
-		return false;
+		CrashDump::Crash();
 	}
 
 	// IOCP 생성
 	m_hcp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, m_iocpActiveNum);
 	if (m_hcp == NULL)
 	{
-		OnError(2, L"Create IOCP()\n");
-		return false;
+		CrashDump::Crash();
 	}
 
 	// Accept Thread 생성
 	m_hAcceptThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)AcceptThread, this, CREATE_SUSPENDED, NULL);
 	if (m_hAcceptThread == NULL)
 	{
-		OnError(3, L"Create Thread Failed\n");
-		return false;
+		CrashDump::Crash();
 	}
+	
+	// Time out thread
+	m_hTimeOutThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)TimeoutThread, this, 0, NULL);
+	if (m_hTimeOutThread == NULL)
+	{
+		CrashDump::Crash();
+	}
+
 
 	// Worker Thread 생성
 	m_hWorkerThread = new HANDLE[m_iocpWorkerNum];
@@ -75,8 +80,7 @@ bool CNetServer::Start(const wchar_t* ip, unsigned short port,
 		m_hWorkerThread[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)IoThread, this, CREATE_SUSPENDED, NULL);
 		if (m_hWorkerThread[i] == NULL)
 		{
-			OnError(3, L"Create Thread Failed\n");
-			return false;
+			CrashDump::Crash();
 		}
 	}
 
@@ -94,7 +98,7 @@ bool CNetServer::Start(const wchar_t* ip, unsigned short port,
 		ResumeThread(m_hWorkerThread[i]);
 	}
 
-	m_isRunning = true;
+	
 
 	return true;
 }
@@ -153,31 +157,35 @@ void CNetServer::Stop()
 	wprintf(L"Disconnected all session\n");
 
 
-	HANDLE* hExit = new HANDLE[static_cast<__int64>(m_iocpWorkerNum) + 1];
+	HANDLE* hExit = new HANDLE[static_cast<__int64>(m_iocpWorkerNum) + 2];
 	for (int i = 0; i < m_iocpWorkerNum; i++)
 	{
 		hExit[i] = m_hWorkerThread[i];
 	}
 	delete[] m_hWorkerThread;
-	hExit[m_iocpWorkerNum] = m_hAcceptThread;
+	hExit[m_iocpWorkerNum++] = m_hAcceptThread;
+	hExit[m_iocpWorkerNum++] = m_hTimeOutThread;
 
 	// worker 종료 메시지 
 	// PostQueuedCompletionStatus 0 0 0
-	for (int i = 0; i < m_iocpWorkerNum; i++)
+	for (int i = 0; i < m_iocpWorkerNum - 2; i++)
 		PostQueuedCompletionStatus(m_hcp, 0, 0, 0);
 
-	WaitForMultipleObjects(m_iocpWorkerNum + 1, hExit, TRUE, INFINITE);
+	WaitForMultipleObjects(m_iocpWorkerNum, hExit, TRUE, INFINITE);
 
 	delete[] hExit;
 	delete[] m_sessionArr;
 
+	CloseHandle(m_hcp);
 
 	WSACleanup();
 
-	
 
 	return;
 }
+
+
+
 
 
 unsigned long _stdcall CNetServer::AcceptThread(void* param)
@@ -200,6 +208,18 @@ unsigned long _stdcall CNetServer::IoThread(void* param)
 	wprintf(L"%d IO thread end\n", GetCurrentThreadId());
 	return 0;
 }
+
+unsigned long _stdcall CNetServer::TimeoutThread(void* param)
+{
+	CNetServer* server = (CNetServer*)param;
+
+	server->RunTimeoutThread();
+
+	return 0;
+
+}
+
+
 
 inline void CNetServer::RunAcceptThread()
 {
@@ -312,8 +332,8 @@ inline void CNetServer::RunAcceptThread()
 			session->port = ntohs(clientAddr.sin_port);
 			session->send_flag = false;
 			session->send_packet_cnt = 0;
-			session->leave_flag = false;
 			session->disconnect = false;
+			session->last_recv_time = GetTickCount64();
 			// send queue는 release 때 정리되어 있어야 함
 			//session->send_q.ClearBuffer();
 			session->recv_q.ClearBuffer();
@@ -366,10 +386,7 @@ inline void CNetServer::RunIoThread()
 		OnWorkerThreadBegin();
 		if (overlapped == NULL) // deque 실패 1. timeout 2. 잘못 호출(Invalid handle) 3. 임의로 queueing 한 것(PostQueue)
 		{
-			if (session == nullptr) 
-			{
-				break;
-			}
+			break;
 		}
 
 		if (ret_gqcp == 0)
@@ -418,23 +435,31 @@ inline void CNetServer::RunIoThread()
 #ifdef TRACE_SERVER
 			tracer.trace(78, session, session->session_id);
 #endif
-			if ((unsigned long long)overlapped == 1)
+
+			switch ((unsigned long long)overlapped)
+			{
+			case enSEND_POST:
 			{
 				session->send_flag = false;
-
 				SendPost(session);
-
+				break;
 			}
-			else if (&session->recv_overlapped == overlapped && !session->leave_flag) // Send 실패는 감지 안함..
+			case enRELEASE_POST:
 			{
-				LeaveSession(session);
+				Release(session);
+				break;
+			}
+			default:
+			{
+				break;
+			}
 			}
 
 		}
 		else {
 			if (&session->recv_overlapped == overlapped) // recv 결과 처리
 			{
-
+				session->last_recv_time = GetTickCount64();
 				//tracer.trace(21, session, session->session_id);
 #ifdef MONITOR
 				QueryPerformanceCounter(&recv_start);
@@ -788,7 +813,7 @@ inline bool CNetServer::RecvPost(Session* session)
 			{ // 요청이 실패
 				if (error_code != WSAECONNRESET)
 					Log(L"SYS", enLOG_LEVEL_ERROR, L"Recv Failed [%d] session : %lld", error_code, session->GetSessionID());
-				LeaveSession(session);
+
 				int io_temp = UpdateIOCount(session);
 #ifdef TRACE_SERVER
 				tracer.trace(1, session, error_code, socket);
@@ -987,7 +1012,7 @@ void CNetServer::CancelIOSession(Session* session)
 
 inline void CNetServer::ReleaseSession(Session* session)
 {
-
+	
 	unsigned long long flag = *((unsigned long long*)(&session->io_count));
 	if (flag == 0)
 	{
@@ -1000,70 +1025,60 @@ inline void CNetServer::ReleaseSession(Session* session)
 			session->pending_tracer.trace(enRelease, session->sock);
 #endif
 
-			if (!session->leave_flag) CrashDump::Crash(); // 삭제 처리 확인
+			// PostQueue 
+			InterlockedIncrement((LONG*)&session->io_count);
+			PostQueuedCompletionStatus(m_hcp, 0, (ULONG_PTR)session, (LPOVERLAPPED)enRELEASE_POST);
 			
-			
-
-			session->session_id = 0;
-
-
-#ifdef AUTO_PACKET
-			PacketPtr packet;
-			while (session->send_q.Dequeue(&packet))
-			{
-			}
-			int remain = session->send_packet_cnt;
-			while (remain > 0)
-			{
-				session->temp_packet[--remain].~PacketPtr();
-			}
-
-#else
-			CPacket* packet;
-			while (session->send_q.Dequeue(&packet))
-			{
-				packet->SubRef();
-			}
-
-			int remain = session->send_packet_cnt;
-			while (remain > 0)
-			{
-				session->temp_packet[--remain]->SubRef();
-			}
-#endif
-
-			closesocket(session->sock);
-			session->sock = INVALID_SOCKET;
-
-
-
-#ifdef STACK_INDEX
-			empty_session_stack.Push(session->session_index);
-#else
-			session->used = false;
-#endif
-			InterlockedDecrement((LONG*)&m_sessionCnt);
 		}
 	}
 
 	return;
 }
 
-void CNetServer::LeaveSession(Session* session)
+void CNetServer::Release(Session* session)
 {
+	
+	OnClientLeave(session->GetSessionID());
+	
+	session->session_id = 0;
 
-	unsigned int flag = *((unsigned int*)(&session->leave_flag));
-	if (flag == 0x0)
+
+#ifdef AUTO_PACKET
+	PacketPtr packet;
+	while (session->send_q.Dequeue(&packet))
 	{
-		if (InterlockedCompareExchange((LONG*)&session->leave_flag, 0x1, flag) == flag)
-		{
-#ifdef TRACE_SESSION
-			session->pending_tracer.trace(enLeave, session->sock, GetTickCount64());
-#endif
-			OnClientLeave(*(unsigned long long*) & session->session_id);
-			
-		}
 	}
+	int remain = session->send_packet_cnt;
+	while (remain > 0)
+	{
+		session->temp_packet[--remain].~PacketPtr();
+	}
+
+#else
+	CPacket* packet;
+	while (session->send_q.Dequeue(&packet))
+	{
+		packet->SubRef();
+	}
+
+	int remain = session->send_packet_cnt;
+	while (remain > 0)
+	{
+		session->temp_packet[--remain]->SubRef();
+	}
+#endif
+
+	closesocket(session->sock);
+	session->sock = INVALID_SOCKET;
+
+
+
+#ifdef STACK_INDEX
+	empty_session_stack.Push(session->session_index);
+#else
+	session->used = false;
+#endif
+	InterlockedDecrement((LONG*)&m_sessionCnt);
 
 	return;
 }
@@ -1084,5 +1099,33 @@ void CNetServer::Show()
 	wprintf(L"Session: %d\n", m_sessionCnt);
 	wprintf(L"PacketPool Use: %d\n", CPacket::GetUsePool());
 	
+	return;
+}
+
+
+void CNetServer::RunTimeoutThread()
+{
+	int max_session = m_maxSession;
+	while (m_isRunning)
+	{
+		Sleep(1000);
+
+		for (int i = 0; i < max_session; i++)
+		{
+			Session* session = &m_sessionArr[i];
+			ULONG64 now_tick = GetTickCount64();
+			InterlockedIncrement((LONG*)&m_sessionArr[i].io_count);
+			if (!session->release_flag && !session->disconnect)
+			{
+				if (now_tick - session->last_recv_time >= 40000) {
+					OnClientTimeout(session->GetSessionID());
+					session->last_recv_time = now_tick;
+				}
+				
+			}
+			UpdateIOCount(session);
+		}
+	}
+
 	return;
 }

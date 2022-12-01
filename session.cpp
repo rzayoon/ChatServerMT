@@ -12,6 +12,8 @@ Session::Session()
 	io_count = 0;
 	send_flag = false;
 	send_packet_cnt = 0;
+	release_flag = true;
+	disconnect = true;
 	InitializeCriticalSection(&session_cs);
 }
 

@@ -4,7 +4,6 @@
 #include "CPacket.h"
 #include "session.h"
 #include "Tracer.h"
-#include "monitor.h"
 
 
 #define SEND_ZEROCOPY
@@ -24,6 +23,12 @@ class CNetServer
 		ID_MASK = 0xFFFFFFFF,	
 		INDEX_BIT_SHIFT = 32,
 		MAX_WSABUF = 30
+	};
+
+	enum {
+		enSEND_POST = 1,
+		enRELEASE_POST = 2
+
 	};
 
 public:
@@ -112,6 +117,7 @@ public:
 	/// <param name="session_id"></param>
 	virtual void OnClientLeave(unsigned long long session_id) = 0;
 	
+	virtual void OnClientTimeout(unsigned long long session_id) = 0;
 	/// <summary>
 	/// 요청에 대한 처리가 완료된 Send 건의 대상 Session Id와 보낸 크기
 	/// </summary>
@@ -146,6 +152,7 @@ private:
 
 	HANDLE m_hcp;
 	HANDLE m_hAcceptThread;
+	HANDLE m_hTimeOutThread;
 	HANDLE* m_hWorkerThread;
 	int m_iocpWorkerNum;
 	int m_iocpActiveNum;
@@ -167,9 +174,11 @@ private:
 
 	static unsigned long _stdcall AcceptThread(void* param);
 	static unsigned long _stdcall IoThread(void* param);
+	static unsigned long _stdcall TimeoutThread(void* param);
 
 	void RunAcceptThread();
 	void RunIoThread();
+	void RunTimeoutThread();
 
 	bool RecvPost(Session* session);
 	void SendPost(Session* session);
@@ -180,8 +189,7 @@ private:
 	void UpdatePendCount(Session* session);
 	void CancelIOSession(Session* session);
 	void ReleaseSession(Session* session);
-	void LeaveSession(Session* session);
-
+	void Release(Session* session);
 
 	bool m_isRunning;
 
@@ -191,9 +199,7 @@ private:
 
 	Session* m_sessionArr;
 	unsigned int m_sess_id = 1;
-#ifdef MONITOR
-	Monitor monitor;
-#endif
+
 
 #ifdef TRACE_SERVER
 	Tracer tracer;

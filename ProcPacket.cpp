@@ -84,7 +84,7 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 				CPacket::Free(send_packet);*/
 
 				InterlockedIncrement(&g_chatServer.m_duplicateLogin);
-				Log(L"SYS", enLOG_LEVEL_ERROR, L"Duplicated Login : session id[%lld]", temp_user->session_id);
+				Log(L"SYS", enLOG_LEVEL_ERROR, L"Duplicated Login : session id[%lld] account no[%lld]", temp_user->session_id, temp_user->account_no);
 				//g_chatServer.DisconnectSession(temp_user->session_id);
 
 				ret = true;

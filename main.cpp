@@ -41,6 +41,7 @@ int main()
 	int packet_code;
 	int packet_key;
 	int nagle;
+	int monitor_reconnect;
 	SYSLOG_Init(L"Log", enLOG_LEVEL_DEBUG);
 
 	TextParser parser;
@@ -56,6 +57,8 @@ int main()
 	parser.GetValue("MaxSession", &max_session);
 	parser.GetValue("PacketCode", &packet_code);
 	parser.GetValue("PacketKey", &packet_key);
+	parser.GetValue("AutoReconnectMonitor", &monitor_reconnect);
+
 
 	parser.GetValue("Nagle", &nagle);
 
@@ -67,7 +70,7 @@ int main()
 	parser.GetValue("ClientIOCPWorker", &worker);
 	parser.GetValue("ClientIOCPActive", &max_worker);
 
-	
+	g_chatServer.ConnectMonitor(wip, port, worker, max_worker, nagle);
 
 	DWORD oldTick = timeGetTime();
 	while (1)
@@ -89,7 +92,7 @@ int main()
 		}
 
 		Sleep(1000);
-		if(!g_chatServer.IsConnectedMonitor())
+		if(monitor_reconnect && !g_chatServer.IsConnectedMonitor())
 			g_chatServer.ConnectMonitor(wip, port, worker, max_worker, nagle);
 
 		g_chatServer.Collect();

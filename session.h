@@ -33,7 +33,11 @@ enum
 
 class alignas(64) Session
 {
-public:
+	friend class CNetServer;
+	friend class CLanServer;
+	friend class CLanClient;
+
+private:
 
 	Session();
 	~Session();
@@ -71,11 +75,9 @@ public:
 	int release_flag;
 	alignas(64) int pend_count; // CancelIO 타이밍 잡기
 	int disconnect;
-	alignas(64) int leave_flag;
 	alignas(64) int send_flag;
 	alignas(64) int send_packet_cnt;  // Send에 넣은 Packet 객체 삭제에 필요
-	alignas(64) DWORD ref_time;
-	ULONGLONG send_packet_time;
+	alignas(64) ULONG64 last_recv_time;
 
 	wchar_t ip[16];
 	unsigned short port;

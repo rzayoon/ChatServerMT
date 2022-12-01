@@ -39,11 +39,8 @@ ChatServer::ChatServer()
 	m_messageTps = 0;
 	m_collectMsgTPS = 0;
 
-	m_runTimeCheck = true;
-
 	m_pdh.Init();
 
-	h_timeOutThread = CreateThread(NULL, 0, TimeOutThread, (PVOID)&m_runTimeCheck, 0, NULL);
 }
 
 
@@ -53,8 +50,6 @@ ChatServer::~ChatServer()
 		DeleteCriticalSection(&m_userMapCS[i]);*/
 	ReleaseSector();
 
-	m_runTimeCheck = false;
-	WaitForSingleObject(h_timeOutThread, INFINITE);
 	
 }
 
@@ -168,6 +163,11 @@ void ChatServer::OnSend(unsigned long long session_id, int send_size)
 {
 
 	return;
+}
+
+void ChatServer::OnClientTimeout(unsigned long long session_id)
+{
+	DisconnectSession(session_id);
 }
 
 
@@ -385,43 +385,6 @@ void ChatServer::Show()
 	m_CpuTime.Show();
 }
 
-void ChatServer::CheckTimeOut()
-{
-	int iCnt;
-
-	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
-	{
-		AcquireSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);
-	}
-
-
-	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
-	{
-		for (auto& iter : m_userMap[iCnt])
-		{
-			User* user = iter.second;
-			if (GetTickCount64() - user->GetLastRecvTime() >= 40000) {
-				ULONG64 lastTick = user->last_recv_time;
-				ULONG64 nowTick;
-				user->last_recv_time = nowTick = GetTickCount64();
-				unsigned long long s_id = user->session_id;
-				// disconnect
-				DisconnectSession(user->session_id);
-				Log(L"Chat", enLOG_LEVEL_DEBUG, L"Time Out session: %lld %lld %lld\n", s_id, lastTick, nowTick);
-
-			}
-		}
-	}
-
-	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
-	{
-		ReleaseSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);
-	}
-
-
-
-
-}
 
 void ChatServer::Collect()
 {
@@ -459,15 +422,3 @@ void ChatServer::SendMonitor(int time_stamp)
 	return;
 }
 
-DWORD TimeOutThread(PVOID param)
-{
-	bool* runTimeCheck = (bool*)param;
-
-	while (*runTimeCheck)
-	{
-		Sleep(1000);
-		g_chatServer.CheckTimeOut();
-	}
-
-	return 0;
-}
