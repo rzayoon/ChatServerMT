@@ -27,8 +27,8 @@ class CNetServer
 
 	enum {
 		enSEND_POST = 1,
-		enRELEASE_POST = 2
-
+		enRELEASE_POST = 2,
+		enCANCEL_IO = 3
 	};
 
 public:

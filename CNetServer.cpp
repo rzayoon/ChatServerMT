@@ -409,6 +409,7 @@ inline void CNetServer::RunIoThread()
 				}
 				else if (error_code == 1236L)
 				{
+					CrashDump::Crash();
 					cnt = InterlockedIncrement(&ABORTEDBYLOCAL);
 				}
 				else
@@ -687,7 +688,7 @@ bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 				if (InterlockedExchange((LONG*)&session->send_flag, true) == false)
 				{
 					InterlockedIncrement((LONG*)&session->io_count);
-					PostQueuedCompletionStatus(m_hcp, 0, (ULONG_PTR)session, (LPOVERLAPPED)1);
+					PostQueuedCompletionStatus(m_hcp, 0, (ULONG_PTR)session, (LPOVERLAPPED)enSEND_POST);
 
 				}
 
@@ -1001,7 +1002,7 @@ void CNetServer::CancelIOSession(Session* session)
 			session->pending_tracer.trace(enCancelIO, session->sock, GetTickCount64());
 #endif
 			InterlockedIncrement((LONG*)&session->io_count);
-			PostQueuedCompletionStatus(m_hcp, 0, (ULONG_PTR)session, &session->recv_overlapped); // io 없는 경우 Leave 호출 안하는 것 대비.. Leave 자체를 Post 하면 필요없다.
+			PostQueuedCompletionStatus(m_hcp, 0, (ULONG_PTR)session, (LPOVERLAPPED)enCANCEL_IO); // io 없는 경우 Leave 호출 안하는 것 대비.. Leave 자체를 Post 하면 필요없다.
 			CancelIoEx((HANDLE)session->sock, NULL);
 		}
 	}
