@@ -66,7 +66,6 @@ private:
 
 	DebugNode buf[256];
 	alignas(64) LONG64 pos;
-	alignas(64) LONG b;
 
 	static const unsigned int mask;
 

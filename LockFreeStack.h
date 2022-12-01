@@ -39,7 +39,6 @@ private:
 	alignas(64) LONG64 _size;
 	alignas(64) bool _freeList;
 	LockFreePool<Node> *_pool;
-	alignas(64) char b;
 
 };
 

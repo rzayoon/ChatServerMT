@@ -300,5 +300,4 @@ private:
 	alignas(64) int tls_index;
 	bool placement_new;
 	int default_size;
-	int a = 0;
 };

@@ -102,7 +102,6 @@ protected:
 	alignas(64) unsigned int _capacity;
 	// 읽기 전용
 	alignas(64) bool _freeList;
-	alignas(64) char b; // 클래스 뒤에 뭐가 올지 모름 (자주 변경되는 값? - > freelist 읽을 때 캐시무효화)
 };
 
 template<class DATA>

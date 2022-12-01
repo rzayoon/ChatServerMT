@@ -35,9 +35,9 @@ bool CLanClient::Connect(const wchar_t* serverIp, unsigned short port,
 	m_iocpActiveNum = iocpActive;
 	m_iocpWorkerNum = iocpWorker;
 
-	// WinSock 초기화
 	if (!m_isInit)
 	{
+		// WinSock 초기화
 		WSADATA wsa;
 		if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
 		{
