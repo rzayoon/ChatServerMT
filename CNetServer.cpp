@@ -477,25 +477,26 @@ inline void CNetServer::RunIoThread()
 					packet->MoveWritePos(header.len);
 					if (!packet->Decode())
 					{
-						Log(L"SYS", enLOG_LEVEL_DEBUG, L"Packet Error");
+						Log(L"SYS", enLOG_LEVEL_ERROR, L"Packet Error");
 						Disconnect(session);
 					}
-
-#ifdef MONITOR
-					QueryPerformanceCounter(&on_recv_st);
-#endif
-					OnRecv(session->GetSessionID(), packet);
-#ifdef MONITOR
-					QueryPerformanceCounter(&on_recv_ed);
-					monitor.AddOnRecvTime(&on_recv_st, &on_recv_ed);
-#endif
-
-					if (packet->GetDataSize() != 0)
+					else
 					{
-						Log(L"SYS", enLOG_LEVEL_ERROR, L"Packet Data remained after OnRecv(), %d bytes", packet->GetDataSize());
-						Disconnect(session);
+#ifdef MONITOR
+						QueryPerformanceCounter(&on_recv_st);
+#endif
+						OnRecv(session->GetSessionID(), packet);
+#ifdef MONITOR
+						QueryPerformanceCounter(&on_recv_ed);
+						monitor.AddOnRecvTime(&on_recv_st, &on_recv_ed);
+#endif
 
-					}
+						if (packet->GetDataSize() != 0)
+						{
+							Log(L"SYS", enLOG_LEVEL_ERROR, L"Packet Data remained after OnRecv(), %d bytes", packet->GetDataSize());
+							Disconnect(session);
+						}
+				}
 
 					CPacket::Free(packet);
 #endif
