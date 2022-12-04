@@ -496,11 +496,11 @@ inline void CNetServer::RunIoThread()
 							Log(L"SYS", enLOG_LEVEL_ERROR, L"Packet Data remained after OnRecv(), %d bytes", packet->GetDataSize());
 							Disconnect(session);
 						}
-				}
+					}
 
 					CPacket::Free(packet);
 #endif
-
+				
 				}
 #ifdef MONITOR
 				QueryPerformanceCounter(&recv_end);
