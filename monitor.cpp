@@ -1,6 +1,10 @@
 #include <Windows.h>
 #include <stdio.h>
 
+#include "CPacket.h"
+#include "session.h"
+#include "CrashDump.h"
+
 #include "CNetServer.h"
 #include "monitor.h"
 #include "session.h"

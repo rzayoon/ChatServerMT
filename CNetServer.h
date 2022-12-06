@@ -1,10 +1,12 @@
 #pragma once
-#include <Windows.h>
 
-#include "CPacket.h"
-#include "session.h"
-#include "Tracer.h"
 
+
+//#include <Windows.h>
+//#include "CPacket.h"
+//#include "session.h"
+//#include "Tracer.h"
+//#include "CrashDump.h"
 
 #define SEND_ZEROCOPY
 
@@ -37,12 +39,20 @@ public:
 	{
 		m_isRunning = false;
 		ZeroMemory(m_ip, sizeof(m_ip));
+
+		WSADATA wsa;
+		if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
+		{
+			CrashDump::Crash();
+		}
 	}
 
 	~CNetServer()
 	{
 		if(m_isRunning)
 			Stop();
+
+		WSACleanup();
 	}
 
 	/// <summary>
@@ -209,5 +219,6 @@ private:
 	alignas(64) int m_sessionCnt = 0;
 	unsigned long long m_preAccept = 0;
 	int m_acceptErr = 0;
+
 };
 

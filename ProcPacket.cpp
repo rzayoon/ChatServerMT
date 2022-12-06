@@ -1,16 +1,32 @@
+
+
+#pragma comment (lib, "cpp_redis.lib")
+#pragma comment (lib, "tacopie.lib")
+#include <cpp_redis/cpp_redis>
+
 #include <unordered_map>
 using std::unordered_map;
+#include <string>
+
+#include <Windows.h>
+#include "CPacket.h"
+#include "session.h"
+#include "Tracer.h"
+#include "CrashDump.h"
 
 #include "CNetServer.h"
 #include "User.h"
 #include "MemoryPoolTls.h"
+
+#include "MonitorClient.h"
+#include "CCpuUsage.h"
+#include "CPDH.h"
 
 #include "ChatServer.h"
 #include "ProcPacket.h"
 #include "PacketMaker.h"
 #include "Sector.h"
 #include "CommonProtocol.h"
-#include "CrashDump.h"
 #include "ProfileTls.h"
 
 #include "CLog.h"
@@ -36,9 +52,9 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 	(*packet).GetData((char*)id, MAX_ID_SIZE * sizeof(wchar_t));
 	(*packet).GetData((char*)nick, MAX_NICK_SIZE * sizeof(wchar_t));
 	
-	char session_key[64];
-
+	char session_key[65];
 	(*packet).GetData((char*)session_key, 64);
+	session_key[64] = '\0';
 
 	if (user->is_login == true)
 	{
@@ -56,11 +72,13 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 	}
 	if (!ret) return false;
 
+
 	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
 	{
 		AcquireSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);
 	}
 
+	// 남아있는 user account 확인
 	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
 	{
 		for (auto& iter : g_chatServer.m_userMap[iCnt])
@@ -72,8 +90,6 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 				// 다른 세션 id에서 account no 중복 로그인
 
 				ULONGLONG t = GetTickCount64();
-
-				//CrashDump::Crash();
 
 				/*CPacket* send_packet = CPacket::Alloc();
 
@@ -87,31 +103,46 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 				Log(L"SYS", enLOG_LEVEL_ERROR, L"Duplicated Login : session id[%lld] account no[%lld]", temp_user->session_id, temp_user->account_no);
 				//g_chatServer.DisconnectSession(temp_user->session_id);
 
-				ret = true;
+				ret = true; // 안끊는 상태로 테스트
 			}
 		}
 		if (!ret) break;
 	}
-		
 	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
 	{
 		ReleaseSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);
 	}
 	if (!ret) return false;
 
-	InterlockedDecrement(&g_chatServer.m_connectCnt);
-	InterlockedIncrement(&g_chatServer.m_loginCnt);
+	// session key redis 에서 확인
+	auto get = g_chatServer.m_redis.get(std::to_string(account_no));
+	g_chatServer.m_redis.sync_commit();
 
-	user->is_login = true;
+	BYTE status;
 	user->account_no = account_no;
-	wcscpy_s(user->id, id);
-	wcscpy_s(user->nickname, nick);
+
+	if (strcmp(session_key, get.get().as_string().c_str()) == 0)
+	{
+		status = 1;
+		InterlockedDecrement(&g_chatServer.m_connectCnt);
+		InterlockedIncrement(&g_chatServer.m_loginCnt);
+
+		user->is_login = true;
+
+		wcscpy_s(user->id, id);
+		wcscpy_s(user->nickname, nick);
+
+	}
+	else
+	{
+		status = 0;
+	}
+
+
 
 	CPacket* send_packet = CPacket::Alloc();
-
-	PacketMaker::MakeLogin(send_packet, 1, user->account_no);
+	PacketMaker::MakeLogin(send_packet, status, user->account_no);
 	g_chatServer.SendMessageUni(send_packet, user);
-
 	CPacket::Free(send_packet);
 
 	return true;

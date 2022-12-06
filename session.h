@@ -1,5 +1,6 @@
 #pragma once
 #include <Windows.h>
+
 #include "CPacket.h"
 #include "RingBuffer.h"
 #include "LockFreeQueue.h"

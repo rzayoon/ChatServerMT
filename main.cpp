@@ -1,6 +1,11 @@
 
 #pragma comment(lib, "ws2_32")
 #pragma comment(lib, "winmm")
+
+#pragma comment (lib, "cpp_redis.lib")
+#pragma comment (lib, "tacopie.lib")
+#include <cpp_redis/cpp_redis>
+
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 
@@ -13,9 +18,17 @@
 #include <unordered_map>
 using std::unordered_map;
 
+#include "CPacket.h"
+#include "session.h"
+#include "CrashDump.h"
+
 #include "CNetServer.h"
 #include "User.h"
 #include "MemoryPoolTls.h"
+
+#include "MonitorClient.h"
+#include "CCpuUsage.h"
+#include "CPDH.h"
 
 #include "ChatServer.h"
 #include "TextParser.h"
@@ -61,7 +74,7 @@ int main()
 
 
 	parser.GetValue("Nagle", &nagle);
-
+	g_chatServer.ConnectRedis();
 	g_chatServer.Start(wip, port, worker, max_worker, max_session, nagle, packet_key, packet_code);
 	
 	parser.GetStringValue("MonitorIP", ip, 16);
@@ -70,7 +83,11 @@ int main()
 	parser.GetValue("ClientIOCPWorker", &worker);
 	parser.GetValue("ClientIOCPActive", &max_worker);
 
+
+	
 	g_chatServer.ConnectMonitor(wip, port, worker, max_worker, nagle);
+
+
 
 	DWORD oldTick = timeGetTime();
 	while (1)

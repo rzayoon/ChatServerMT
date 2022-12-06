@@ -6,10 +6,14 @@
 
 #include <stdio.h>
 
+#include <Windows.h>
+#include "CPacket.h"
+#include "session.h"
+#include "CrashDump.h"
+
 #include "LockFreeQueue.h"
 #include "CNetServer.h"
 #include "NetProtocol.h"
-#include "CrashDump.h"
 #include "CLog.h"
 
 
@@ -45,11 +49,7 @@ bool CNetServer::Start(const wchar_t* ip, unsigned short port,
 	m_isRunning = true;
 
 	// WinSock 초기화
-	WSADATA wsa;
-	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
-	{
-		CrashDump::Crash();
-	}
+
 
 	// IOCP 생성
 	m_hcp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, m_iocpActiveNum);
@@ -178,7 +178,7 @@ void CNetServer::Stop()
 
 	CloseHandle(m_hcp);
 
-	WSACleanup();
+	
 
 
 	return;

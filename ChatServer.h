@@ -1,7 +1,7 @@
 #pragma once
-#include "MonitorClient.h"
-#include "CCpuUsage.h"
-#include "CPDH.h"
+
+
+
 
 
 #define dfUSER_MAP_HASH 1
@@ -87,6 +87,15 @@ public:
 		int iocpWorker, int iocpActive, bool nagle);
 
 	void SendMonitor(int time_stamp);
+
+
+public:
+
+	cpp_redis::client m_redis;
+	void ConnectRedis()
+	{
+		m_redis.connect();
+	}
 
 };
 

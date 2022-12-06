@@ -1,3 +1,9 @@
+
+
+#pragma comment (lib, "cpp_redis.lib")
+#pragma comment (lib, "tacopie.lib")
+#include <cpp_redis/cpp_redis>
+
 #include <Windows.h>
 
 #include <thread>
@@ -7,16 +13,22 @@ using std::vector;
 #include <unordered_map>
 using std::unordered_map;
 
+
+#include "MonitorClient.h"
+#include "CCpuUsage.h"
+#include "CPDH.h"
+#include "CrashDump.h"
+
+#include "session.h"
 #include "CNetServer.h"
 #include "User.h"
 #include "MemoryPoolTls.h"
-
 #include "ChatServer.h"
+
 #include "CommonProtocol.h"
 #include "ProcPacket.h"
 #include "Sector.h"
 #include "ObjectPool.h"
-#include "CrashDump.h"
 #include "ProfileTls.h"
 
 #include "CLog.h"
