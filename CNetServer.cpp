@@ -409,7 +409,6 @@ inline void CNetServer::RunIoThread()
 				}
 				else if (error_code == 1236L)
 				{
-					CrashDump::Crash();
 					cnt = InterlockedIncrement(&ABORTEDBYLOCAL);
 				}
 				else

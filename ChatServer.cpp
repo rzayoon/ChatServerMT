@@ -122,6 +122,10 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 			m_chatTracer.trace(10, (PVOID)user->session_id, GetTickCount64());
 #endif
 			result_proc = PacketProcessor::ProcLogin(user, packet);
+			if (!result_proc)
+			{
+				Log(L"Recv", enLOG_LEVEL_DEBUG, L"Login Proc fail account %d", user->account_no);
+			}
 			break;
 		}
 		case en_PACKET_CS_CHAT_REQ_SECTOR_MOVE:
@@ -130,6 +134,10 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 			m_chatTracer.trace(11, (PVOID)user->session_id, GetTickCount64());
 #endif
 			result_proc = PacketProcessor::ProcSectorMove(user, packet);
+			if (!result_proc)
+			{
+				Log(L"Recv", enLOG_LEVEL_DEBUG, L"SectorMove Proc fail account %d", user->account_no);
+		}
 			break;
 		}
 		case en_PACKET_CS_CHAT_REQ_MESSAGE:
@@ -138,6 +146,10 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 			m_chatTracer.trace(12, (PVOID)user->session_id, GetTickCount64());
 #endif
 			result_proc = PacketProcessor::ProcMessage(user, packet);
+			if (!result_proc)
+			{
+				Log(L"Recv", enLOG_LEVEL_DEBUG, L"Chat Message fail account %d", user->account_no);
+			}
 			break;
 		}
 		case en_PACKET_CS_CHAT_REQ_HEARTBEAT:
@@ -148,6 +160,7 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 		default: // undefined protocol
 		{
 			// 예외 처리
+			Log(L"Recv", enLOG_LEVEL_DEBUG, L"Undefined Packet account %d", user->account_no);
 			break;
 		}
 
@@ -157,8 +170,7 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 	}
 	else
 	{
-		int a = 0;
-
+		
 	}
 
 	if (!result_proc) 
@@ -179,7 +191,12 @@ void ChatServer::OnSend(unsigned long long session_id, int send_size)
 
 void ChatServer::OnClientTimeout(unsigned long long session_id)
 {
+	CrashDump::Crash();
+
+	Log(L"Disconnect", enLOG_LEVEL_DEBUG, L"Timeout session %lld", session_id);
+
 	DisconnectSession(session_id);
+
 }
 
 
@@ -405,10 +422,10 @@ void ChatServer::Collect()
 	m_pdh.Collect();
 }
 
-bool ChatServer::ConnectMonitor(const wchar_t* serverIp, unsigned short port, int iocpWorker, int iocpActive, bool nagle)
+bool ChatServer::ConnectMonitor()
 {
 	if(!m_monitorCli.IsConnected())
-		return m_monitorCli.Connect(serverIp, port, iocpWorker, iocpActive, nagle);
+		return m_monitorCli.Connect(m_monitorIP, m_monitorPort, 1, 1, 1);
 	return false;
 }
 
@@ -432,5 +449,14 @@ void ChatServer::SendMonitor(int time_stamp)
 	m_monitorCli.SendMonitorData(dfMONITOR_DATA_TYPE_CHAT_PACKET_POOL, use_pool, time_stamp);
 
 	return;
+}
+
+void ChatServer::SetMonitorClientInfo(const wchar_t* serverIp, unsigned short port)
+{
+	memcpy(m_monitorIP, serverIp, sizeof(m_monitorIP));
+	m_monitorPort = port;
+
+	return;
+
 }
 

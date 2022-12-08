@@ -40,11 +40,7 @@ public:
 		m_sentPacketCnt = 0;
 	}
 
-	~CLanClient()
-	{
-		if(m_isConnected)
-			Disconnect();
-	}
+	~CLanClient();
 
 	bool Connect(
 		const wchar_t* ip, unsigned short port, 

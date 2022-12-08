@@ -131,11 +131,14 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 
 		wcscpy_s(user->id, id);
 		wcscpy_s(user->nickname, nick);
-
+		ret = true;
 	}
 	else
 	{
 		status = 0;
+		ret = false;
+		Log(L"Login", enLOG_LEVEL_DEBUG, L"Session Key Error account %d", account_no);
+
 	}
 
 
@@ -145,7 +148,7 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 	g_chatServer.SendMessageUni(send_packet, user);
 	CPacket::Free(send_packet);
 
-	return true;
+	return ret;
 }
 
 bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)

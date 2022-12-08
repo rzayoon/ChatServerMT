@@ -7,7 +7,7 @@
 #include "Tracer.h"
 
 #define STACK_INDEX
-//#define TRACE_SESSION
+#define TRACE_SESSION
 
 #define MAX_SENDQ 200
 

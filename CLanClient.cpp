@@ -14,6 +14,13 @@
 
 
 
+CLanClient::~CLanClient()
+{
+	if (m_isConnected)
+		Disconnect();
+
+}
+
 bool CLanClient::Connect(const wchar_t* serverIp, unsigned short port,
 	int iocpWorker, int iocpActive, bool nagle)
 {
@@ -35,42 +42,41 @@ bool CLanClient::Connect(const wchar_t* serverIp, unsigned short port,
 	m_iocpActiveNum = iocpActive;
 	m_iocpWorkerNum = iocpWorker;
 
-	if (!m_isInit)
+
+	// WinSock 초기화
+	WSADATA wsa;
+	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
 	{
-		// WinSock 초기화
-		WSADATA wsa;
-		if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
-		{
-			Log(L"ERR", enLOG_LEVEL_ERROR, L"WSAStartup failed");
-			CrashDump::Crash();
-		}
+		Log(L"ERR", enLOG_LEVEL_ERROR, L"WSAStartup failed");
+		CrashDump::Crash();
+	}
 
 
 		// IOCP 생성
-		m_hcp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, m_iocpActiveNum);
-		if (m_hcp == NULL)
-		{
-			Log(L"ERR", enLOG_LEVEL_ERROR, L"CreateIOCP failed");
-			CrashDump::Crash();
-		}
+	m_hcp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, m_iocpActiveNum);
+	if (m_hcp == NULL)
+	{
+		Log(L"ERR", enLOG_LEVEL_ERROR, L"CreateIOCP failed");
+		CrashDump::Crash();
+	}
 
 		// Worker Thread 생성
-		m_hWorkerThread = new HANDLE[m_iocpWorkerNum];
-		if (m_hWorkerThread == nullptr)
+	m_hWorkerThread = new HANDLE[m_iocpWorkerNum];
+	if (m_hWorkerThread == nullptr)
+	{
+		Log(L"ERR", enLOG_LEVEL_ERROR, L"mem alloc failed");
+		CrashDump::Crash();
+	}
+
+	for (int i = 0; i < m_iocpWorkerNum; i++)
+	{
+		m_hWorkerThread[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)IoThread, this, CREATE_SUSPENDED, NULL);
+		if (m_hWorkerThread[i] == NULL)
 		{
-			Log(L"ERR", enLOG_LEVEL_ERROR, L"mem alloc failed");
+			Log(L"ERR", enLOG_LEVEL_ERROR, L"Create Thread");
 			CrashDump::Crash();
 		}
-
-		for (int i = 0; i < m_iocpWorkerNum; i++)
-		{
-			m_hWorkerThread[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)IoThread, this, CREATE_SUSPENDED, NULL);
-			if (m_hWorkerThread[i] == NULL)
-			{
-				Log(L"ERR", enLOG_LEVEL_ERROR, L"Create Thread");
-				CrashDump::Crash();
-			}
-		}
+	}
 
 
 
@@ -78,8 +84,7 @@ bool CLanClient::Connect(const wchar_t* serverIp, unsigned short port,
 		{
 			ResumeThread(m_hWorkerThread[i]);
 		}
-		m_isInit = true;
-	}
+	
 
 	m_serverSock = socket(AF_INET, SOCK_STREAM, 0);
 	if (m_serverSock == INVALID_SOCKET)
@@ -142,6 +147,17 @@ void CLanClient::Disconnect()
 	}
 
 	ReleaseClient();
+
+	for (int i = 0; i < m_iocpWorkerNum; i++)
+	{
+		PostQueuedCompletionStatus(m_hcp, 0, 0, 0);
+	}
+
+	WaitForMultipleObjects(m_iocpWorkerNum, m_hWorkerThread, TRUE, INFINITE);
+
+	delete[] m_hWorkerThread;
+
+	WSACleanup();
 
 	wprintf(L"Disconnected\n");
 

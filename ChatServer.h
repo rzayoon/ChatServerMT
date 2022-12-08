@@ -83,10 +83,16 @@ public:
 	{
 		return m_monitorCli.IsConnected();
 	}
-	bool ConnectMonitor(const wchar_t* serverIp, unsigned short port,
-		int iocpWorker, int iocpActive, bool nagle);
+	bool ConnectMonitor();
 
 	void SendMonitor(int time_stamp);
+
+	void SetMonitorClientInfo(const wchar_t* serverIp, unsigned short port);
+
+private:
+
+	wchar_t m_monitorIP[16];
+	unsigned short m_monitorPort;
 
 
 public:

@@ -80,12 +80,11 @@ int main()
 	parser.GetStringValue("MonitorIP", ip, 16);
 	MultiByteToWideChar(CP_ACP, 0, ip, 16, wip, 16);
 	parser.GetValue("MonitorPort", &port);
-	parser.GetValue("ClientIOCPWorker", &worker);
-	parser.GetValue("ClientIOCPActive", &max_worker);
 
+	g_chatServer.SetMonitorClientInfo(wip, port);
 
 	
-	g_chatServer.ConnectMonitor(wip, port, worker, max_worker, nagle);
+	g_chatServer.ConnectMonitor();
 
 
 
@@ -110,7 +109,7 @@ int main()
 
 		Sleep(1000);
 		if(monitor_reconnect && !g_chatServer.IsConnectedMonitor())
-			g_chatServer.ConnectMonitor(wip, port, worker, max_worker, nagle);
+			g_chatServer.ConnectMonitor();
 
 		g_chatServer.Collect();
 		if(g_chatServer.IsConnectedMonitor())
