@@ -1,13 +1,13 @@
 #pragma once
-#include <Windows.h>
-
-#include "CPacket.h"
-#include "RingBuffer.h"
-#include "LockFreeQueue.h"
-#include "Tracer.h"
+//#include <Windows.h>
+//
+//#include "CPacket.h"
+//#include "RingBuffer.h"
+//#include "LockFreeQueue.h"
+//#include "Tracer.h"
 
 #define STACK_INDEX
-#define TRACE_SESSION
+//#define TRACE_SESSION
 
 #define MAX_SENDQ 200
 

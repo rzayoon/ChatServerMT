@@ -8,10 +8,11 @@
 
 #include <Windows.h>
 #include "CPacket.h"
-#include "session.h"
 #include "CrashDump.h"
 
+#include "RingBuffer.h"
 #include "LockFreeQueue.h"
+#include "session.h"
 #include "CNetServer.h"
 #include "NetProtocol.h"
 #include "CLog.h"
@@ -48,17 +49,17 @@ bool CNetServer::Start(const wchar_t* ip, unsigned short port,
 
 	m_isRunning = true;
 
-	// WinSock √ ±‚»≠
+	// WinSock Ï¥àÍ∏∞Ìôî
 
 
-	// IOCP ª˝º∫
+	// IOCP ÏÉùÏÑ±
 	m_hcp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, m_iocpActiveNum);
 	if (m_hcp == NULL)
 	{
 		CrashDump::Crash();
 	}
 
-	// Accept Thread ª˝º∫
+	// Accept Thread ÏÉùÏÑ±
 	m_hAcceptThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)AcceptThread, this, CREATE_SUSPENDED, NULL);
 	if (m_hAcceptThread == NULL)
 	{
@@ -73,7 +74,7 @@ bool CNetServer::Start(const wchar_t* ip, unsigned short port,
 	}
 
 
-	// Worker Thread ª˝º∫
+	// Worker Thread ÏÉùÏÑ±
 	m_hWorkerThread = new HANDLE[m_iocpWorkerNum];
 	for (int i = 0; i < m_iocpWorkerNum; i++)
 	{
@@ -114,7 +115,7 @@ void CNetServer::Stop()
 	m_isRunning = false;
 
 	
-	// blockingµ» Accept ±˙øÏ±‚
+	// blockingÎêú Accept Íπ®Ïö∞Í∏∞
 	SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock == INVALID_SOCKET)
 	{
@@ -139,7 +140,7 @@ void CNetServer::Stop()
 
 	closesocket(sock);
 
-	// session ø¨∞· ≤˜±‚
+	// session Ïó∞Í≤∞ ÎÅäÍ∏∞
 	for (int i = 0; i < m_maxSession; i++)
 	{
 		if (!m_sessionArr[i].release_flag)
@@ -148,7 +149,7 @@ void CNetServer::Stop()
 		}
 	}
 	
-	// session ∏±∏Æ¡Óµ… ∂ß±Ó¡ˆ ¥Î±‚
+	// session Î¶¥Î¶¨Ï¶àÎê† ÎïåÍπåÏßÄ ÎåÄÍ∏∞
 	while (m_sessionCnt != 0)
 	{
 		Sleep(0); 
@@ -166,7 +167,7 @@ void CNetServer::Stop()
 	hExit[m_iocpWorkerNum++] = m_hAcceptThread;
 	hExit[m_iocpWorkerNum++] = m_hTimeOutThread;
 
-	// worker ¡æ∑· ∏ﬁΩ√¡ˆ 
+	// worker Ï¢ÖÎ£å Î©îÏãúÏßÄ 
 	// PostQueuedCompletionStatus 0 0 0
 	for (int i = 0; i < m_iocpWorkerNum - 2; i++)
 		PostQueuedCompletionStatus(m_hcp, 0, 0, 0);
@@ -193,8 +194,8 @@ unsigned long _stdcall CNetServer::AcceptThread(void* param)
 	CNetServer* server = (CNetServer*)param;
 	wprintf(L"%d Accept thread On...\n", GetCurrentThreadId());
 	server->RunAcceptThread();
-	// this call¿Ã≥™ server-> ƒ›¿Ã≥™ mov 2»∏¡ˆ∏∏ ƒ⁄µ˘ ∆Ì¿«ªÛ
-	// mov reg1 [this]/[server(¡ˆø™¡÷º“)]
+	// this callÏù¥ÎÇò server-> ÏΩúÏù¥ÎÇò mov 2ÌöåÏßÄÎßå ÏΩîÎî© Ìé∏ÏùòÏÉÅ
+	// mov reg1 [this]/[server(ÏßÄÏó≠Ï£ºÏÜå)]
 	// mov reg2 [reg1]
 	wprintf(L"%d Accept thread end\n", GetCurrentThreadId());
 	return 0;
@@ -240,7 +241,7 @@ inline void CNetServer::RunAcceptThread()
 	retVal = bind(listenSock, (SOCKADDR*)&serveraddr, sizeof(serveraddr));
 	if (retVal == SOCKET_ERROR) return;
 
-	// º“ƒœ º€Ω≈ πˆ∆€
+	// ÏÜåÏºì ÏÜ°Ïã† Î≤ÑÌçº
 #ifdef SEND_ZEROCOPY
 	int sendBufSize = 0;
 	setsockopt(listenSock, SOL_SOCKET, SO_SNDBUF, (char*)&sendBufSize, sizeof(sendBufSize));
@@ -249,7 +250,7 @@ inline void CNetServer::RunAcceptThread()
 	// nagle
 	setsockopt(listenSock, IPPROTO_TCP, TCP_NODELAY, (char*)&m_nagle, sizeof(m_nagle));
 
-	// RST∑Œ ¡æ∑·
+	// RSTÎ°ú Ï¢ÖÎ£å
 	LINGER linger;
 	linger.l_linger = 0;
 	linger.l_onoff = true;
@@ -334,20 +335,20 @@ inline void CNetServer::RunAcceptThread()
 			session->send_packet_cnt = 0;
 			session->disconnect = false;
 			session->last_recv_time = GetTickCount64();
-			// send queue¥¬ release ∂ß ¡§∏Æµ«æÓ ¿÷æÓæﬂ «‘
+			// send queueÎäî release Îïå Ï†ïÎ¶¨ÎêòÏñ¥ ÏûàÏñ¥Ïïº Ìï®
 			//session->send_q.ClearBuffer();
 			session->recv_q.ClearBuffer();
 
 			CreateIoCompletionPort((HANDLE)session->sock, m_hcp, (ULONG_PTR)session, 0);
 
-			session->release_flag = 0; // ¡ÿ∫Ò ≥°
+			session->release_flag = 0; // Ï§ÄÎπÑ ÎÅù
 
 			//tracer.trace(10, session, session->session_id); // accept
 
-			//¡¢º”
+			//Ï†ëÏÜç
 			InterlockedIncrement((LONG*)&m_sessionCnt);
 
-			// ¡¢º”ø° ¥Î«— √≥∏Æ ∏’¿˙ «ÿæﬂ «‘.
+			// Ï†ëÏÜçÏóê ÎåÄÌïú Ï≤òÎ¶¨ Î®ºÏ†Ä Ìï¥Ïïº Ìï®.
 			OnClientJoin(*((unsigned long long*) & session->session_id));
 			
 			RecvPost(session);
@@ -355,7 +356,7 @@ inline void CNetServer::RunAcceptThread()
 			UpdateIOCount(session);
 
 		}
-		else // Connection Requeset ∞≈∫Œ
+		else // Connection Requeset Í±∞Î∂Ä
 		{
 			closesocket(clientSock);
 		}
@@ -381,17 +382,17 @@ inline void CNetServer::RunIoThread()
 		DWORD cbTransferred;
 		WSAOVERLAPPED* overlapped;
 		Session* session;
-		ret_gqcp = GetQueuedCompletionStatus(m_hcp, &cbTransferred, (PULONG_PTR)&session, (LPOVERLAPPED*)&overlapped, INFINITE); // overlapped∞° null¿Œ¡ˆ »Æ¿Œ øÏº±
+		ret_gqcp = GetQueuedCompletionStatus(m_hcp, &cbTransferred, (PULONG_PTR)&session, (LPOVERLAPPED*)&overlapped, INFINITE); // overlappedÍ∞Ä nullÏù∏ÏßÄ ÌôïÏù∏ Ïö∞ÏÑ†
 
 		OnWorkerThreadBegin();
-		if (overlapped == NULL) // deque Ω«∆– 1. timeout 2. ¿ﬂ∏¯ »£√‚(Invalid handle) 3. ¿”¿«∑Œ queueing «— ∞Õ(PostQueue)
+		if (overlapped == NULL) // deque Ïã§Ìå® 1. timeout 2. ÏûòÎ™ª Ìò∏Ï∂ú(Invalid handle) 3. ÏûÑÏùòÎ°ú queueing Ìïú Í≤É(PostQueue)
 		{
 			break;
 		}
 
 		if (ret_gqcp == 0)
 		{
-			//ø°∑Øƒ⁄µÂ ∑Œ±Î
+			//ÏóêÎü¨ÏΩîÎìú Î°úÍπÖ
 			error_code = GetLastError();
 			switch (error_code)
 			{
@@ -430,7 +431,7 @@ inline void CNetServer::RunIoThread()
 		session->pending_tracer.trace(enRetGQCS, (unsigned long long)overlapped, cbTransferred);
 #endif
 
-		if (cbTransferred == 0 || session->disconnect) // Pending »ƒ IO √≥∏Æ Ω«∆– OR PostQueue ∞·∞˙
+		if (cbTransferred == 0 || session->disconnect) // Pending ÌõÑ IO Ï≤òÎ¶¨ Ïã§Ìå® OR PostQueue Í≤∞Í≥º
 		{
 #ifdef TRACE_SERVER
 			tracer.trace(78, session, session->session_id);
@@ -457,7 +458,7 @@ inline void CNetServer::RunIoThread()
 
 		}
 		else {
-			if (&session->recv_overlapped == overlapped) // recv ∞·∞˙ √≥∏Æ
+			if (&session->recv_overlapped == overlapped) // recv Í≤∞Í≥º Ï≤òÎ¶¨
 			{
 				session->last_recv_time = GetTickCount64();
 				//tracer.trace(21, session, session->session_id);
@@ -466,7 +467,7 @@ inline void CNetServer::RunIoThread()
 #endif
 
 				session->recv_q.MoveRear(cbTransferred);
-				// msg »Æ¿Œ
+				// msg ÌôïÏù∏
 
 				while (true)
 				{
@@ -536,7 +537,7 @@ inline void CNetServer::RunIoThread()
 				bool ret_recv = RecvPost(session);
 
 			}
-			else if (&session->send_overlapped == overlapped) // send ∞·∞˙ √≥∏Æ
+			else if (&session->send_overlapped == overlapped) // send Í≤∞Í≥º Ï≤òÎ¶¨
 			{
 #ifdef MONITOR
 				QueryPerformanceCounter(&send_start);
@@ -568,7 +569,7 @@ inline void CNetServer::RunIoThread()
 				while (packet_cnt > 0)
 				{
 #ifdef MONITOR
-					monitor.IncSendPacket(); // Ω«¡¶∑Œ ∫∏≥Ω Packet ºˆ
+					monitor.IncSendPacket(); // Ïã§Ï†úÎ°ú Î≥¥ÎÇ∏ Packet Ïàò
 #endif
 					session->temp_packet[--packet_cnt]->SubRef();
 				}
@@ -587,7 +588,7 @@ inline void CNetServer::RunIoThread()
 					SendPost(session);
 
 			}
-			else // send, recv ¥Ÿ æ∆¥‘(¥Ÿ∏• session¿« overlapped ¿¸¥ﬁ)
+			else // send, recv Îã§ ÏïÑÎãò(Îã§Î•∏ sessionÏùò overlapped Ï†ÑÎã¨)
 			{
 				CrashDump::Crash();
 			}
@@ -626,7 +627,7 @@ bool CNetServer::SendPacket(unsigned long long session_id, PacketPtr packet)
 	{
 		if (session->session_id == id)
 		{
-			session->send_q.Enqueue(packet);  // 64 bit ±‚¡ÿ 8byte
+			session->send_q.Enqueue(packet);  // 64 bit Í∏∞Ï§Ä 8byte
 
 			SendPost(session);
 
@@ -709,7 +710,7 @@ bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 
 
 #ifdef MONITOR
-	if (!ret)   // « ø‰«œ¡ˆ æ ¿∫µÌ
+	if (!ret)   // ÌïÑÏöîÌïòÏßÄ ÏïäÏùÄÎìØ
 	{
 		monitor.IncNoSession();
 	}
@@ -762,7 +763,7 @@ inline void CNetServer::Disconnect(Session* session)
 #ifdef TRACE_SESSION
 			session->pending_tracer.trace(enDisconnect, session->sock, GetTickCount64());
 #endif
-			// pending cnt == 0 ¿Ã∏È cancel IO 
+			// pending cnt == 0 Ïù¥Î©¥ cancel IO 
 			
 			CancelIOSession(session);
 
@@ -810,7 +811,7 @@ inline bool CNetServer::RecvPost(Session* session)
 		if (retval == SOCKET_ERROR)
 		{
 			if ((error_code = WSAGetLastError()) != ERROR_IO_PENDING)
-			{ // ø‰√ª¿Ã Ω«∆–
+			{ // ÏöîÏ≤≠Ïù¥ Ïã§Ìå®
 				if (error_code != WSAECONNRESET)
 					Log(L"SYS", enLOG_LEVEL_ERROR, L"Recv Failed [%d] session : %lld", error_code, session->GetSessionID());
 
@@ -838,7 +839,7 @@ inline bool CNetServer::RecvPost(Session* session)
 			session->pending_tracer.trace(enRecvSync, 0, socket, GetTickCount64());
 #endif
 			//tracer.trace(73, session, socket);
-			//µø±‚ recv
+			//ÎèôÍ∏∞ recv
 			ret = true;
 		}
 	}
@@ -869,7 +870,7 @@ inline void CNetServer::SendPost(Session* session)
 
 				ZeroMemory(&session->send_overlapped, sizeof(session->send_overlapped));
 
-				// ∞≥º± « ø‰
+				// Í∞úÏÑ† ÌïÑÏöî
 				if (buf_cnt > MAX_WSABUF)
 					buf_cnt = MAX_WSABUF;
 
@@ -924,7 +925,7 @@ inline void CNetServer::SendPost(Session* session)
 				DWORD error_code;
 				if (retval == SOCKET_ERROR)
 				{
-					if ((error_code = WSAGetLastError()) != WSA_IO_PENDING) // ø‰√ª ¿⁄√º∞° Ω«∆–
+					if ((error_code = WSAGetLastError()) != WSA_IO_PENDING) // ÏöîÏ≤≠ ÏûêÏ≤¥Í∞Ä Ïã§Ìå®
 					{
 						if(error_code != WSAECONNRESET)
 							Log(L"SYS", enLOG_LEVEL_ERROR, L"Send Failed [%d] session : %lld", error_code, session->GetSessionID());
@@ -947,7 +948,7 @@ inline void CNetServer::SendPost(Session* session)
 				}
 				else
 				{
-					//µø±‚√≥∏Æ
+					//ÎèôÍ∏∞Ï≤òÎ¶¨
 #ifdef TRACE_SESSION
 					session->pending_tracer.trace(enSendSync, 0, socket, GetTickCount64());
 #endif
@@ -979,7 +980,7 @@ inline int CNetServer::UpdateIOCount(Session* session)
 
 inline void CNetServer::UpdatePendCount(Session* session)
 {
-	// disconnect «—π¯ø° »Æ¿Œ
+	// disconnect ÌïúÎ≤àÏóê ÌôïÏù∏
 	int temp;
 	if ((temp = InterlockedDecrement((LONG*)&session->pend_count)) == 0)
 	{
@@ -1001,7 +1002,7 @@ void CNetServer::CancelIOSession(Session* session)
 			session->pending_tracer.trace(enCancelIO, session->sock, GetTickCount64());
 #endif
 			InterlockedIncrement((LONG*)&session->io_count);
-			PostQueuedCompletionStatus(m_hcp, 0, (ULONG_PTR)session, (LPOVERLAPPED)enCANCEL_IO); // io æ¯¥¬ ∞ÊøÏ Leave »£√‚ æ»«œ¥¬ ∞Õ ¥Î∫Ò.. Leave ¿⁄√º∏¶ Post «œ∏È « ø‰æ¯¥Ÿ.
+			PostQueuedCompletionStatus(m_hcp, 0, (ULONG_PTR)session, (LPOVERLAPPED)enCANCEL_IO); // io ÏóÜÎäî Í≤ΩÏö∞ Leave Ìò∏Ï∂ú ÏïàÌïòÎäî Í≤É ÎåÄÎπÑ.. Leave ÏûêÏ≤¥Î•º Post ÌïòÎ©¥ ÌïÑÏöîÏóÜÎã§.
 			CancelIoEx((HANDLE)session->sock, NULL);
 		}
 	}
@@ -1117,11 +1118,13 @@ void CNetServer::RunTimeoutThread()
 			InterlockedIncrement((LONG*)&m_sessionArr[i].io_count);
 			if (!session->release_flag && !session->disconnect)
 			{
-				if ((long long)(now_tick - session->last_recv_time) >= 40000) {
-					OnClientTimeout(session->GetSessionID());
+				ULONG64 last_tick = session->last_recv_time;
+				if ((long long)(now_tick - last_tick) >= 40000) {
+					unsigned long long id = session->GetSessionID();
+					OnClientTimeout(id);
 					session->last_recv_time = now_tick;
+					Log(L"SYS", enLOG_LEVEL_DEBUG, L"Timeout session %lld tick %lld %lld", id, now_tick, last_tick);
 				}
-				
 			}
 			UpdateIOCount(session);
 		}
