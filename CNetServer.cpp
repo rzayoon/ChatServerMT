@@ -1118,11 +1118,13 @@ void CNetServer::RunTimeoutThread()
 			InterlockedIncrement((LONG*)&m_sessionArr[i].io_count);
 			if (!session->release_flag && !session->disconnect)
 			{
-				if (now_tick - session->last_recv_time >= 40000) {
-					OnClientTimeout(session->GetSessionID());
+				ULONG64 last_tick = session->last_recv_time;
+				if ((long long)(now_tick - last_tick) >= 40000) {
+					unsigned long long id = session->GetSessionID();
+					OnClientTimeout(id);
 					session->last_recv_time = now_tick;
+					Log(L"SYS", enLOG_LEVEL_DEBUG, L"Timeout session %lld tick %lld %lld", id, now_tick, last_tick);
 				}
-				
 			}
 			UpdateIOCount(session);
 		}
