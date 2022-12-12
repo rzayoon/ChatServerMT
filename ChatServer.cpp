@@ -14,7 +14,12 @@ using std::vector;
 using std::unordered_map;
 
 
-#include "MonitorClient.h"
+#include "MemoryPoolTls.h"
+#include "CPacket.h"
+#include "Tracer.h"
+#include "RingBuffer.h"
+#include "LockFreeQueue.h"
+
 #include "CCpuUsage.h"
 #include "CPDH.h"
 #include "CrashDump.h"
@@ -22,7 +27,10 @@ using std::unordered_map;
 #include "session.h"
 #include "CNetServer.h"
 #include "User.h"
-#include "MemoryPoolTls.h"
+
+
+#include "CLanClient.h"
+#include "MonitorClient.h"
 #include "ChatServer.h"
 
 #include "CommonProtocol.h"
