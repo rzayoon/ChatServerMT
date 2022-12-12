@@ -400,14 +400,14 @@ void ChatServer::CheckTimeOut()
 		for (auto& iter : m_userMap[iCnt])
 		{
 			User* user = iter.second;
-			if (GetTickCount64() - user->GetLastRecvTime() >= 40000) {
-				ULONG64 lastTick = user->last_recv_time;
-				ULONG64 nowTick;
-				user->last_recv_time = nowTick = GetTickCount64();
-				unsigned long long s_id = user->session_id;
+			ULONG64 nowTick = GetTickCount64();
+			ULONG64 lastTick = user->last_recv_time;
+			unsigned long long s_id = user->session_id;
+			if ((LONG64)(nowTick - lastTick) >= 40000) {
+				
 				// disconnect
 				DisconnectSession(user->session_id);
-				Log(L"Chat", enLOG_LEVEL_DEBUG, L"Time Out session: %lld %lld %lld\n", s_id, lastTick, nowTick);
+				Log(L"Chat", enLOG_LEVEL_DEBUG, L"Time Out session: %lld %lld %lld\n", s_id, nowTick, lastTick);
 
 			}
 		}
