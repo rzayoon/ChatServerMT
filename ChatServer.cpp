@@ -53,6 +53,9 @@ ChatServer::~ChatServer()
 		DeleteCriticalSection(&m_userMapCS[i]);*/
 	ReleaseSector();
 
+	if (m_monitorCli.IsConnected())
+		m_monitorCli.Disconnect();
+
 	m_runTimeCheck = false;
 	WaitForSingleObject(h_timeOutThread, INFINITE);
 	
