@@ -49,17 +49,17 @@ bool CNetServer::Start(const wchar_t* ip, unsigned short port,
 
 	m_isRunning = true;
 
-	// WinSock 초기화
+	// WinSock 초기??
 
 
-	// IOCP 생성
+	// IOCP ?�성
 	m_hcp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, m_iocpActiveNum);
 	if (m_hcp == NULL)
 	{
 		CrashDump::Crash();
 	}
 
-	// Accept Thread 생성
+	// Accept Thread ?�성
 	m_hAcceptThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)AcceptThread, this, CREATE_SUSPENDED, NULL);
 	if (m_hAcceptThread == NULL)
 	{
@@ -74,7 +74,7 @@ bool CNetServer::Start(const wchar_t* ip, unsigned short port,
 	}
 
 
-	// Worker Thread 생성
+	// Worker Thread ?�성
 	m_hWorkerThread = new HANDLE[m_iocpWorkerNum];
 	for (int i = 0; i < m_iocpWorkerNum; i++)
 	{
@@ -115,7 +115,7 @@ void CNetServer::Stop()
 	m_isRunning = false;
 
 	
-	// blocking된 Accept 깨우기
+	// blocking??Accept 깨우�?
 	SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock == INVALID_SOCKET)
 	{
@@ -140,7 +140,7 @@ void CNetServer::Stop()
 
 	closesocket(sock);
 
-	// session 연결 끊기
+	// session ?�결 ?�기
 	for (int i = 0; i < m_maxSession; i++)
 	{
 		if (!m_sessionArr[i].release_flag)
@@ -149,7 +149,7 @@ void CNetServer::Stop()
 		}
 	}
 	
-	// session 릴리즈될 때까지 대기
+	// session 릴리즈될 ?�까지 ?��?
 	while (m_sessionCnt != 0)
 	{
 		Sleep(0); 
@@ -194,8 +194,8 @@ unsigned long _stdcall CNetServer::AcceptThread(void* param)
 	CNetServer* server = (CNetServer*)param;
 	wprintf(L"%d Accept thread On...\n", GetCurrentThreadId());
 	server->RunAcceptThread();
-	// this call이나 server-> 콜이나 mov 2회지만 코딩 편의상
-	// mov reg1 [this]/[server(지역주소)]
+	// this call?�나 server-> 콜이??mov 2?��?�?코딩 ?�의??
+	// mov reg1 [this]/[server(지??��??]
 	// mov reg2 [reg1]
 	wprintf(L"%d Accept thread end\n", GetCurrentThreadId());
 	return 0;
@@ -241,7 +241,7 @@ inline void CNetServer::RunAcceptThread()
 	retVal = bind(listenSock, (SOCKADDR*)&serveraddr, sizeof(serveraddr));
 	if (retVal == SOCKET_ERROR) return;
 
-	// 소켓 송신 버퍼
+	// ?�켓 ?�신 버퍼
 #ifdef SEND_ZEROCOPY
 	int sendBufSize = 0;
 	setsockopt(listenSock, SOL_SOCKET, SO_SNDBUF, (char*)&sendBufSize, sizeof(sendBufSize));
@@ -250,7 +250,7 @@ inline void CNetServer::RunAcceptThread()
 	// nagle
 	setsockopt(listenSock, IPPROTO_TCP, TCP_NODELAY, (char*)&m_nagle, sizeof(m_nagle));
 
-	// RST로 종료
+	// RST�?종료
 	LINGER linger;
 	linger.l_linger = 0;
 	linger.l_onoff = true;
@@ -335,20 +335,20 @@ inline void CNetServer::RunAcceptThread()
 			session->send_packet_cnt = 0;
 			session->disconnect = false;
 			session->last_recv_time = GetTickCount64();
-			// send queue는 release 때 정리되어 있어야 함
+			// send queue??release ???�리?�어 ?�어????
 			//session->send_q.ClearBuffer();
 			session->recv_q.ClearBuffer();
 
 			CreateIoCompletionPort((HANDLE)session->sock, m_hcp, (ULONG_PTR)session, 0);
 
-			session->release_flag = 0; // 준비 끝
+			session->release_flag = 0; // 준�???
 
 			//tracer.trace(10, session, session->session_id); // accept
 
-			//접속
+			//?�속
 			InterlockedIncrement((LONG*)&m_sessionCnt);
 
-			// 접속에 대한 처리 먼저 해야 함.
+			// ?�속???�??처리 먼�? ?�야 ??
 			OnClientJoin(*((unsigned long long*) & session->session_id));
 			
 			RecvPost(session);
@@ -356,7 +356,7 @@ inline void CNetServer::RunAcceptThread()
 			UpdateIOCount(session);
 
 		}
-		else // Connection Requeset 거부
+		else // Connection Requeset 거�?
 		{
 			closesocket(clientSock);
 		}
@@ -382,17 +382,17 @@ inline void CNetServer::RunIoThread()
 		DWORD cbTransferred;
 		WSAOVERLAPPED* overlapped;
 		Session* session;
-		ret_gqcp = GetQueuedCompletionStatus(m_hcp, &cbTransferred, (PULONG_PTR)&session, (LPOVERLAPPED*)&overlapped, INFINITE); // overlapped가 null인지 확인 우선
+		ret_gqcp = GetQueuedCompletionStatus(m_hcp, &cbTransferred, (PULONG_PTR)&session, (LPOVERLAPPED*)&overlapped, INFINITE); // overlapped가 null?��? ?�인 ?�선
 
 		OnWorkerThreadBegin();
-		if (overlapped == NULL) // deque 실패 1. timeout 2. 잘못 호출(Invalid handle) 3. 임의로 queueing 한 것(PostQueue)
+		if (overlapped == NULL) // deque ?�패 1. timeout 2. ?�못 ?�출(Invalid handle) 3. ?�의�?queueing ??�?PostQueue)
 		{
 			break;
 		}
 
 		if (ret_gqcp == 0)
 		{
-			//에러코드 로깅
+			//?�러코드 로깅
 			error_code = GetLastError();
 			switch (error_code)
 			{
@@ -431,7 +431,7 @@ inline void CNetServer::RunIoThread()
 		session->pending_tracer.trace(enRetGQCS, (unsigned long long)overlapped, cbTransferred);
 #endif
 
-		if (cbTransferred == 0 || session->disconnect) // Pending 후 IO 처리 실패 OR PostQueue 결과
+		if (cbTransferred == 0 || session->disconnect) // Pending ??IO 처리 ?�패 OR PostQueue 결과
 		{
 #ifdef TRACE_SERVER
 			tracer.trace(78, session, session->session_id);
@@ -467,7 +467,7 @@ inline void CNetServer::RunIoThread()
 #endif
 
 				session->recv_q.MoveRear(cbTransferred);
-				// msg 확인
+				// msg ?�인
 
 				while (true)
 				{
@@ -569,7 +569,7 @@ inline void CNetServer::RunIoThread()
 				while (packet_cnt > 0)
 				{
 #ifdef MONITOR
-					monitor.IncSendPacket(); // 실제로 보낸 Packet 수
+					monitor.IncSendPacket(); // ?�제�?보낸 Packet ??
 #endif
 					session->temp_packet[--packet_cnt]->SubRef();
 				}
@@ -588,7 +588,7 @@ inline void CNetServer::RunIoThread()
 					SendPost(session);
 
 			}
-			else // send, recv 다 아님(다른 session의 overlapped 전달)
+			else // send, recv ???�님(?�른 session??overlapped ?�달)
 			{
 				CrashDump::Crash();
 			}
@@ -627,7 +627,7 @@ bool CNetServer::SendPacket(unsigned long long session_id, PacketPtr packet)
 	{
 		if (session->session_id == id)
 		{
-			session->send_q.Enqueue(packet);  // 64 bit 기준 8byte
+			session->send_q.Enqueue(packet);  // 64 bit 기�? 8byte
 
 			SendPost(session);
 
@@ -710,7 +710,7 @@ bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 
 
 #ifdef MONITOR
-	if (!ret)   // 필요하지 않은듯
+	if (!ret)   // ?�요?��? ?��???
 	{
 		monitor.IncNoSession();
 	}
@@ -763,7 +763,7 @@ inline void CNetServer::Disconnect(Session* session)
 #ifdef TRACE_SESSION
 			session->pending_tracer.trace(enDisconnect, session->sock, GetTickCount64());
 #endif
-			// pending cnt == 0 이면 cancel IO 
+			// pending cnt == 0 ?�면 cancel IO 
 			
 			CancelIOSession(session);
 
@@ -811,7 +811,7 @@ inline bool CNetServer::RecvPost(Session* session)
 		if (retval == SOCKET_ERROR)
 		{
 			if ((error_code = WSAGetLastError()) != ERROR_IO_PENDING)
-			{ // 요청이 실패
+			{ // ?�청???�패
 				if (error_code != WSAECONNRESET)
 					Log(L"SYS", enLOG_LEVEL_ERROR, L"Recv Failed [%d] session : %lld", error_code, session->GetSessionID());
 
@@ -839,7 +839,7 @@ inline bool CNetServer::RecvPost(Session* session)
 			session->pending_tracer.trace(enRecvSync, 0, socket, GetTickCount64());
 #endif
 			//tracer.trace(73, session, socket);
-			//동기 recv
+			//?�기 recv
 			ret = true;
 		}
 	}
@@ -870,7 +870,7 @@ inline void CNetServer::SendPost(Session* session)
 
 				ZeroMemory(&session->send_overlapped, sizeof(session->send_overlapped));
 
-				// 개선 필요
+				// 개선 ?�요
 				if (buf_cnt > MAX_WSABUF)
 					buf_cnt = MAX_WSABUF;
 
@@ -925,7 +925,7 @@ inline void CNetServer::SendPost(Session* session)
 				DWORD error_code;
 				if (retval == SOCKET_ERROR)
 				{
-					if ((error_code = WSAGetLastError()) != WSA_IO_PENDING) // 요청 자체가 실패
+					if ((error_code = WSAGetLastError()) != WSA_IO_PENDING) // ?�청 ?�체가 ?�패
 					{
 						if(error_code != WSAECONNRESET)
 							Log(L"SYS", enLOG_LEVEL_ERROR, L"Send Failed [%d] session : %lld", error_code, session->GetSessionID());
@@ -948,7 +948,7 @@ inline void CNetServer::SendPost(Session* session)
 				}
 				else
 				{
-					//동기처리
+					//?�기처리
 #ifdef TRACE_SESSION
 					session->pending_tracer.trace(enSendSync, 0, socket, GetTickCount64());
 #endif
@@ -980,7 +980,7 @@ inline int CNetServer::UpdateIOCount(Session* session)
 
 inline void CNetServer::UpdatePendCount(Session* session)
 {
-	// disconnect 한번에 확인
+	// disconnect ?�번???�인
 	int temp;
 	if ((temp = InterlockedDecrement((LONG*)&session->pend_count)) == 0)
 	{
@@ -1002,7 +1002,7 @@ void CNetServer::CancelIOSession(Session* session)
 			session->pending_tracer.trace(enCancelIO, session->sock, GetTickCount64());
 #endif
 			InterlockedIncrement((LONG*)&session->io_count);
-			PostQueuedCompletionStatus(m_hcp, 0, (ULONG_PTR)session, (LPOVERLAPPED)enCANCEL_IO); // io 없는 경우 Leave 호출 안하는 것 대비.. Leave 자체를 Post 하면 필요없다.
+			PostQueuedCompletionStatus(m_hcp, 0, (ULONG_PTR)session, (LPOVERLAPPED)enCANCEL_IO); // io ?�는 경우 Leave ?�출 ?�하??�??��?. Leave ?�체�?Post ?�면 ?�요?�다.
 			CancelIoEx((HANDLE)session->sock, NULL);
 		}
 	}

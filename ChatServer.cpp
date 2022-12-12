@@ -70,7 +70,8 @@ ChatServer::~ChatServer()
 		DeleteCriticalSection(&m_userMapCS[i]);*/
 	ReleaseSector();
 
-	
+	if (m_monitorCli.IsConnected())
+		m_monitorCli.Disconnect();
 }
 
 bool ChatServer::OnConnectionRequest(wchar_t* ip, unsigned short port)
