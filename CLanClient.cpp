@@ -6,6 +6,11 @@
 
 #include <stdio.h>
 
+#include <Windows.h>
+
+#include "CPacket.h"
+#include "Tracer.h"
+#include "RingBuffer.h"
 #include "LockFreeQueue.h"
 #include "CLanClient.h"
 #include "NetProtocol.h"
