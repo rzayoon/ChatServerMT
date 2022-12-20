@@ -65,7 +65,7 @@ ChatServer::~ChatServer()
 	
 }
 
-bool ChatServer::OnConnectionRequest(wchar_t* ip, unsigned short port)
+bool ChatServer::OnConnectionRequest(const wchar_t* ip, unsigned short port)
 {
 	//
 	

@@ -18,7 +18,7 @@ public:
 
 
 private:
-	bool OnConnectionRequest(wchar_t* ip, unsigned short port);
+	bool OnConnectionRequest(const wchar_t* ip, unsigned short port);
 	void OnClientJoin(unsigned long long session_id);
 	void OnClientLeave(unsigned long long session_id);
 
