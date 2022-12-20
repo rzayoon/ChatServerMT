@@ -97,7 +97,7 @@ public:
 	/// <param name="ip"> 立加等 IP </param>
 	/// <param name="port"> 立加等 Port </param>
 	/// <returns> 鞘夸俊 蝶扼 boolean 府畔 </returns>
-	virtual bool OnConnectionRequest(wchar_t* ip, unsigned short port) = 0;
+	virtual bool OnConnectionRequest(const wchar_t* ip, unsigned short port) = 0;
 
 	/// <summary>
 	/// 己傍利栏肺 立加 贸府等 Session狼 Id 傈崔
