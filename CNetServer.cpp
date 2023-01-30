@@ -517,11 +517,6 @@ inline void CNetServer::RunIoThread()
 						monitor.AddOnRecvTime(&on_recv_st, &on_recv_ed);
 #endif
 
-						if (packet->GetDataSize() != 0)
-						{
-							Log(L"SYS", enLOG_LEVEL_ERROR, L"Packet Data remained after OnRecv(), %d bytes", packet->GetDataSize());
-							Disconnect(session);
-						}
 					}
 					CPacket::Free(packet);
 #endif
