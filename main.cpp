@@ -63,6 +63,11 @@ int main()
 	if (!parser.LoadFile("Config.ini")) return 1;
 	wchar_t wip[16];
 
+	parser.GetStringValue("RedisIP", ip, 16);
+	parser.GetValue("RedisPort", &port);
+	g_chatServer.SetRedisInfo(ip, port);
+	g_chatServer.ConnectRedis();
+
 	parser.GetStringValue("ServerBindIP", ip, 16);
 	MultiByteToWideChar(CP_ACP, 0, ip, 16, wip, 16);
 	parser.GetValue("ServerBindPort", &port);
@@ -76,7 +81,6 @@ int main()
 
 
 	parser.GetValue("Nagle", &nagle);
-	g_chatServer.ConnectRedis();
 	g_chatServer.Start(wip, port, worker, max_worker, max_session, nagle, packet_key, packet_code);
 	
 	parser.GetStringValue("MonitorIP", ip, 16);

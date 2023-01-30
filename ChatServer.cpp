@@ -469,3 +469,10 @@ void ChatServer::SetMonitorClientInfo(const wchar_t* serverIp, unsigned short po
 
 }
 
+void ChatServer::SetRedisInfo(const char* ip, unsigned short port)
+{
+	strcpy_s(m_redisIP, ip);
+	m_redisPort = port;
+	return;
+}
+

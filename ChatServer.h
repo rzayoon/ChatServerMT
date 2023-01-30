@@ -88,19 +88,22 @@ public:
 	void SendMonitor(int time_stamp);
 
 	void SetMonitorClientInfo(const wchar_t* serverIp, unsigned short port);
+	void SetRedisInfo(const char* ip, unsigned short port);
 
 private:
 
 	wchar_t m_monitorIP[16];
 	unsigned short m_monitorPort;
 
+	cpp_redis::client m_redis;
+	char m_redisIP[16];
+	unsigned short m_redisPort;
 
 public:
 
-	cpp_redis::client m_redis;
 	void ConnectRedis()
 	{
-		m_redis.connect();
+		m_redis.connect(m_redisIP, m_redisPort);
 	}
 
 };
