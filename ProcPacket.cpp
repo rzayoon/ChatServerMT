@@ -100,14 +100,14 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 		//}
 
 		AcquireSRWLockExclusive(&g_chatServer.m_accountMapSRW);
-		SS_ID id = g_chatServer.m_accountMap[account_no];
+		auto iter = g_chatServer.m_accountMap.find(account_no);
 
-		if (id)
+		if (iter != g_chatServer.m_accountMap.end())
 		{
 			// 중복
+			InterlockedIncrement(&g_chatServer.m_duplicateLogin);
 			Log(L"Chat", enLOG_LEVEL_ERROR, L"Duplicated Login [%lld]", account_no);
-			// 아? 기존 유저도 끊을 수 있어야함..
-			g_chatServer.DisconnectSession(id);
+			g_chatServer.DisconnectSession(iter->second);
 			ret = false;
 		}
 		else

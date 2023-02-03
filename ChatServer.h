@@ -50,7 +50,7 @@ private:
 	unordered_map<SS_ID, User*> m_userMap[dfUSER_MAP_HASH];
 	SRWLOCK m_userMapCS[dfUSER_MAP_HASH];
 	
-	unordered_map<DWORD, SS_ID> m_accountMap;
+	unordered_map<long long, SS_ID> m_accountMap;
 	SRWLOCK m_accountMapSRW;
 
 private:

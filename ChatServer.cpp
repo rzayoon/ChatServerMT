@@ -351,8 +351,7 @@ void ChatServer::DeleteUser(SS_ID s_id)
 
 	if (user->is_login) {
 		AcquireSRWLockExclusive(&m_accountMapSRW);
-		m_accountMap[user->account_no] = 0;
-		// account 많으면 삭제코드로..
+		m_accountMap.erase(user->account_no);
 		ReleaseSRWLockExclusive(&m_accountMapSRW);
 
 		InterlockedDecrement(&m_loginCnt);
