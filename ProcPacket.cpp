@@ -74,45 +74,64 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 	}
 	if (!ret) return false;
 
-
-	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
 	{
-		AcquireSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);
-	}
+		//for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
+		//{
+		//	AcquireSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);
+		//}
 
-	// 남아있는 user account 확인
-	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
-	{
-		for (auto& iter : g_chatServer.m_userMap[iCnt])
+		//// 남아있는 user account 확인
+
+		//for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
+		//{
+		//	for (auto& iter : g_chatServer.m_userMap[iCnt])
+		//	{
+		//		ULONGLONG time = GetTickCount64();
+		//		User* temp_user = iter.second;
+		//		if (temp_user->account_no == account_no)
+		//		{
+		//			// 다른 세션 id에서 account no 중복 로그인
+
+		//			ULONGLONG t = GetTickCount64();
+
+		//			/*CPacket* send_packet = CPacket::Alloc();
+
+		//			MakeChatLogin(send_packet, 0, account_no);
+
+		//			SendMessageUni(send_packet, user);
+
+		//			CPacket::Free(send_packet);*/
+
+		//			InterlockedIncrement(&g_chatServer.m_duplicateLogin);
+		//			Log(L"SYS", enLOG_LEVEL_ERROR, L"Duplicated Login : session id[%lld] account no[%lld]", temp_user->session_id, temp_user->account_no);
+		//			//g_chatServer.DisconnectSession(temp_user->session_id);
+
+		//			ret = true; // 안끊는 상태로 테스트
+		//		}
+		//	}
+		//	if (!ret) break;
+		//}
+		//for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
+		//{
+		//	ReleaseSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);
+		//}
+
+		AcquireSRWLockExclusive(&g_chatServer.m_accountSRW);
+		auto iter = g_chatServer.m_accountMap.find(account_no);
+		if (iter != g_chatServer.m_accountMap.end())
 		{
-			ULONGLONG time = GetTickCount64();
-			User* temp_user = iter.second;
-			if (temp_user->account_no == account_no)
-			{
-				// 다른 세션 id에서 account no 중복 로그인
-
-				ULONGLONG t = GetTickCount64();
-
-				/*CPacket* send_packet = CPacket::Alloc();
-
-				MakeChatLogin(send_packet, 0, account_no);
-
-				SendMessageUni(send_packet, user);
-
-				CPacket::Free(send_packet);*/
-
-				InterlockedIncrement(&g_chatServer.m_duplicateLogin);
-				Log(L"SYS", enLOG_LEVEL_ERROR, L"Duplicated Login : session id[%lld] account no[%lld]", temp_user->session_id, temp_user->account_no);
-				//g_chatServer.DisconnectSession(temp_user->session_id);
-
-				ret = true; // 안끊는 상태로 테스트
-			}
+			InterlockedIncrement(&g_chatServer.m_duplicateLogin);
+			Log(L"SYS", enLOG_LEVEL_ERROR, L"Duplicated Login : account no[%d]", account_no);
+			g_chatServer.DisconnectSession(iter->second);
+			ret = false;
 		}
-		if (!ret) break;
-	}
-	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
-	{
-		ReleaseSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);
+		else
+		{
+			g_chatServer.m_accountMap[account_no] = user->session_id;
+			ret = true;
+		}
+		ReleaseSRWLockExclusive(&g_chatServer.m_accountSRW);
+
 	}
 	if (!ret) return false;
 
@@ -139,7 +158,7 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 	{
 		status = 0;
 		ret = false;
-		Log(L"Login", enLOG_LEVEL_DEBUG, L"Session Key Error account %d", account_no);
+		Log(L"Login", enLOG_LEVEL_DEBUG, L"Session Key Error account %lld", account_no);
 
 	}
 

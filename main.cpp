@@ -47,52 +47,19 @@ int main()
 
 	timeBeginPeriod(1);
 	
-	char ip[16];
-	int port;
-	int worker;
-	int max_worker;
-	int max_user;
-	int max_session;
-	int packet_code;
-	int packet_key;
-	int nagle;
-	int monitor_reconnect;
 	SYSLOG_Init(L"Log", enLOG_LEVEL_DEBUG);
 
+
+	int monitor_reconnect;
+	
 	TextParser parser;
 	if (!parser.LoadFile("Config.ini")) return 1;
-	wchar_t wip[16];
-
-	parser.GetStringValue("RedisIP", ip, 16);
-	parser.GetValue("RedisPort", &port);
-	g_chatServer.SetRedisInfo(ip, port);
-	g_chatServer.ConnectRedis();
-
-	parser.GetStringValue("ServerBindIP", ip, 16);
-	MultiByteToWideChar(CP_ACP, 0, ip, 16, wip, 16);
-	parser.GetValue("ServerBindPort", &port);
-	parser.GetValue("IOCPWorkerThread", &worker);
-	parser.GetValue("IOCPActiveThread", &max_worker);
-	parser.GetValue("MaxUser", &max_user);
-	parser.GetValue("MaxSession", &max_session);
-	parser.GetValue("PacketCode", &packet_code);
-	parser.GetValue("PacketKey", &packet_key);
+	
 	parser.GetValue("AutoReconnectMonitor", &monitor_reconnect);
 
 
-	parser.GetValue("Nagle", &nagle);
-	g_chatServer.Start(wip, port, worker, max_worker, max_session, nagle, packet_key, packet_code);
+	g_chatServer.Start();
 	
-	parser.GetStringValue("MonitorIP", ip, 16);
-	MultiByteToWideChar(CP_ACP, 0, ip, 16, wip, 16);
-	parser.GetValue("MonitorPort", &port);
-
-	g_chatServer.SetMonitorClientInfo(wip, port);
-
-	
-	g_chatServer.ConnectMonitor();
-
-
 
 	DWORD oldTick = timeGetTime();
 	while (1)

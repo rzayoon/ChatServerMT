@@ -38,7 +38,7 @@ using std::unordered_map;
 #include "Sector.h"
 #include "ObjectPool.h"
 #include "ProfileTls.h"
-
+#include "TextParser.h"
 #include "CLog.h"
 
 ChatServer g_chatServer;
@@ -46,13 +46,28 @@ ChatServer g_chatServer;
 
 ChatServer::ChatServer()
 {
-	for(int i = 0; i < dfUSER_MAP_HASH; i++)
+	
+}
+
+
+ChatServer::~ChatServer()
+{
+	
+}
+
+bool ChatServer::Start()
+{
+	bool ret;
+
+	for (int i = 0; i < dfUSER_MAP_HASH; i++)
 		InitializeSRWLock(&m_userMapCS[i]);
+
+	InitializeSRWLock(&m_accountSRW);
 
 	InitSector();
 
 	m_maxUser = 15000;
-	
+
 	m_connectCnt = 0;
 	m_loginCnt = 0;
 	m_duplicateLogin = 0;
@@ -61,10 +76,52 @@ ChatServer::ChatServer()
 
 	m_pdh.Init();
 
+	char ip[16];
+	int port;
+	int worker;
+	int max_worker;
+	int max_user;
+	int max_session;
+	int packet_code;
+	int packet_key;
+	int nagle;
+
+	TextParser parser;
+	if (!parser.LoadFile("Config.ini")) return 1;
+	wchar_t wip[16];
+
+	parser.GetStringValue("RedisIP", ip, 16);
+	parser.GetValue("RedisPort", &port);
+	g_chatServer.SetRedisInfo(ip, port);
+	g_chatServer.ConnectRedis();
+
+	parser.GetStringValue("ServerBindIP", ip, 16);
+	MultiByteToWideChar(CP_ACP, 0, ip, 16, wip, 16);
+	parser.GetValue("ServerBindPort", &port);
+	parser.GetValue("IOCPWorkerThread", &worker);
+	parser.GetValue("IOCPActiveThread", &max_worker);
+	parser.GetValue("MaxUser", &max_user);
+	parser.GetValue("MaxSession", &max_session);
+	parser.GetValue("PacketCode", &packet_code);
+	parser.GetValue("PacketKey", &packet_key);
+
+	parser.GetValue("Nagle", &nagle);
+
+
+	ret = CNetServer::Start(wip, port, worker, max_worker, max_session, nagle, packet_key, packet_code);
+
+	parser.GetStringValue("MonitorIP", ip, 16);
+	MultiByteToWideChar(CP_ACP, 0, ip, 16, wip, 16);
+	parser.GetValue("MonitorPort", &port);
+
+	g_chatServer.SetMonitorClientInfo(wip, port);
+
+	g_chatServer.ConnectMonitor();
+
+	return ret;
 }
 
-
-ChatServer::~ChatServer()
+void ChatServer::Stop()
 {
 	/*for (int i = 0; i < dfUSER_MAP_HASH; i++)
 		DeleteCriticalSection(&m_userMapCS[i]);*/
@@ -72,7 +129,9 @@ ChatServer::~ChatServer()
 
 	if (m_monitorCli.IsConnected())
 		m_monitorCli.Disconnect();
+
 }
+
 
 bool ChatServer::OnConnectionRequest(const wchar_t* ip, unsigned short port)
 {
@@ -331,6 +390,10 @@ void ChatServer::DeleteUser(SS_ID s_id)
 
 
 	if (user->is_login) {
+		AcquireSRWLockExclusive(&m_accountSRW);
+		m_accountMap.erase(user->account_no);
+		ReleaseSRWLockExclusive(&m_accountSRW);
+
 		InterlockedDecrement(&m_loginCnt);
 		user->is_login = false;
 	}

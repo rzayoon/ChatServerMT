@@ -16,6 +16,8 @@ public:
 	ChatServer();
 	virtual ~ChatServer();
 
+	bool Start();
+	void Stop();
 
 private:
 	bool OnConnectionRequest(const wchar_t* ip, unsigned short port);
@@ -50,6 +52,9 @@ private:
 	unordered_map<SS_ID, User*> m_userMap[dfUSER_MAP_HASH];
 	SRWLOCK m_userMapCS[dfUSER_MAP_HASH];
 	
+	unordered_map<long long, SS_ID> m_accountMap;
+	SRWLOCK m_accountSRW;
+
 
 private:
 
@@ -75,6 +80,8 @@ private:
 	unsigned int m_collectMsgTPS;
 
 
+
+
 public:
 
 	void Collect();
@@ -94,6 +101,8 @@ private:
 
 	wchar_t m_monitorIP[16];
 	unsigned short m_monitorPort;
+	int m_monitorWorker;
+	int m_monitorActive;
 
 	cpp_redis::client m_redis;
 	char m_redisIP[16];
