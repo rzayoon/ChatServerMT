@@ -1,7 +1,8 @@
 #pragma once
 #include <Windows.h>
 
-typedef unsigned long long SS_ID;
+using SS_ID = unsigned long long;
+
 
 #define MAX_ID_SIZE 20
 #define MAX_NICK_SIZE 20

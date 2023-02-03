@@ -15,6 +15,9 @@ public:
 	ChatServer();
 	virtual ~ChatServer();
 
+	bool Start();
+	void Stop();
+
 
 private:
 	bool OnConnectionRequest(const wchar_t* ip, unsigned short port);
@@ -47,6 +50,8 @@ private:
 	unordered_map<SS_ID, User*> m_userMap[dfUSER_MAP_HASH];
 	SRWLOCK m_userMapCS[dfUSER_MAP_HASH];
 	
+	unordered_map<DWORD, SS_ID> m_accountMap;
+	SRWLOCK m_accountMapSRW;
 
 private:
 
@@ -73,6 +78,10 @@ private:
 
 	unsigned int m_collectMsgTPS;
 
+	wchar_t m_monitorIP[16];
+	unsigned short m_monitorPort;
+	int m_monitorWorker;
+	int m_monitorActive;
 
 public:
 
@@ -82,8 +91,7 @@ public:
 	{
 		return m_monitorCli.IsConnected();
 	}
-	bool ConnectMonitor(const wchar_t* serverIp, unsigned short port,
-		int iocpWorker, int iocpActive, bool nagle);
+	bool ConnectMonitor();
 
 	void SendMonitor(int time_stamp);
 

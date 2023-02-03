@@ -18,7 +18,7 @@ using std::unordered_map;
 #include "ObjectPool.h"
 #include "CrashDump.h"
 #include "ProfileTls.h"
-
+#include "TextParser.h"
 #include "CLog.h"
 
 ChatServer g_chatServer;
@@ -26,13 +26,25 @@ ChatServer g_chatServer;
 
 ChatServer::ChatServer()
 {
-	for(int i = 0; i < dfUSER_MAP_HASH; i++)
+	
+}
+
+
+ChatServer::~ChatServer()
+{
+
+	
+}
+
+bool ChatServer::Start()
+{
+	for (int i = 0; i < dfUSER_MAP_HASH; i++)
 		InitializeSRWLock(&m_userMapCS[i]);
 
 	InitSector();
 
 	m_maxUser = 15000;
-	
+
 	m_connectCnt = 0;
 	m_loginCnt = 0;
 	m_duplicateLogin = 0;
@@ -44,13 +56,53 @@ ChatServer::ChatServer()
 	m_pdh.Init();
 
 	h_timeOutThread = CreateThread(NULL, 0, TimeOutThread, (PVOID)&m_runTimeCheck, 0, NULL);
+
+	char ip[16];
+	int port;
+	int worker;
+	int max_worker;
+	int max_user;
+	int max_session;
+	int packet_code;
+	int packet_key;
+	int nagle;
+
+
+	TextParser parser;
+	if (!parser.LoadFile("Config.ini")) return 1;
+	wchar_t wip[16];
+
+	parser.GetStringValue("ServerBindIP", ip, 16);
+	MultiByteToWideChar(CP_ACP, 0, ip, 16, wip, 16);
+	parser.GetValue("ServerBindPort", &port);
+	parser.GetValue("IOCPWorkerThread", &worker);
+	parser.GetValue("IOCPActiveThread", &max_worker);
+	parser.GetValue("MaxUser", &max_user);
+	parser.GetValue("MaxSession", &max_session);
+	parser.GetValue("PacketCode", &packet_code);
+	parser.GetValue("PacketKey", &packet_key);
+
+	parser.GetValue("Nagle", &nagle);
+
+	bool ret = CNetServer::Start(wip, port, worker, max_worker, max_session, nagle, packet_key, packet_code);
+	if (!ret) return false;
+
+	parser.GetStringValue("MonitorIP", ip, 16);
+	MultiByteToWideChar(CP_ACP, 0, ip, 16, m_monitorIP, 16);
+	parser.GetValue("MonitorPort", &port);
+	m_monitorPort = port;
+	parser.GetValue("ClientIOCPWorker", &m_monitorWorker);
+	parser.GetValue("ClientIOCPActive", &m_monitorActive);
+
+	ConnectMonitor();
+
+	return true;
 }
 
-
-ChatServer::~ChatServer()
+void ChatServer::Stop()
 {
 	/*for (int i = 0; i < dfUSER_MAP_HASH; i++)
-		DeleteCriticalSection(&m_userMapCS[i]);*/
+	DeleteCriticalSection(&m_userMapCS[i]);*/
 	ReleaseSector();
 
 	if (m_monitorCli.IsConnected())
@@ -58,7 +110,9 @@ ChatServer::~ChatServer()
 
 	m_runTimeCheck = false;
 	WaitForSingleObject(h_timeOutThread, INFINITE);
-	
+
+
+	return;
 }
 
 bool ChatServer::OnConnectionRequest(const wchar_t* ip, unsigned short port)
@@ -296,6 +350,11 @@ void ChatServer::DeleteUser(SS_ID s_id)
 
 
 	if (user->is_login) {
+		AcquireSRWLockExclusive(&m_accountMapSRW);
+		m_accountMap[user->account_no] = 0;
+		// account 많으면 삭제코드로..
+		ReleaseSRWLockExclusive(&m_accountMapSRW);
+
 		InterlockedDecrement(&m_loginCnt);
 		user->is_login = false;
 	}
@@ -433,10 +492,10 @@ void ChatServer::Collect()
 	m_pdh.Collect();
 }
 
-bool ChatServer::ConnectMonitor(const wchar_t* serverIp, unsigned short port, int iocpWorker, int iocpActive, bool nagle)
+bool ChatServer::ConnectMonitor()
 {
 	if(!m_monitorCli.IsConnected())
-		return m_monitorCli.Connect(serverIp, port, iocpWorker, iocpActive, nagle);
+		return m_monitorCli.Connect(m_monitorIP, m_monitorPort, m_monitorWorker, m_monitorActive, true);
 	return false;
 }
 
