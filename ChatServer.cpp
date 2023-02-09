@@ -366,12 +366,12 @@ void ChatServer::DeleteUser(SS_ID s_id)
 	if (iter == m_userMap[idx].end())
 		CrashDump::Crash();
 	user = iter->second;
-
+	user->Lock();
 
 	m_userMap[idx].erase(s_id);
 	ReleaseSRWLockExclusive(&m_userMapCS[idx]);
 
-	user->Lock();
+	
 	if (user->session_id != s_id)
 	{
 		CrashDump::Crash();
@@ -384,6 +384,8 @@ void ChatServer::DeleteUser(SS_ID s_id)
 		ReleaseSRWLockExclusive(&g_SectorLock[user->sector_y][user->sector_x]);
 		user->is_in_sector = false;
 	}
+
+	user->Unlock();
 
 	user->sector_x = SECTOR_MAX_X;
 	user->sector_y = SECTOR_MAX_Y;
@@ -403,7 +405,7 @@ void ChatServer::DeleteUser(SS_ID s_id)
 	user->session_id = -1;
 	user->account_no = -1;
 
-	user->Unlock();
+	
 
 	m_userPool.Free(user);
 
