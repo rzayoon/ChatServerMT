@@ -7,6 +7,10 @@
 #include "LockFreeQueue.h"
 #include "LockFreeStack.h"
 
+#pragma warning(push)
+#pragma warning(disable: 6011)
+
+
 template <class DATA>
 class MemoryPoolTls
 {
@@ -19,7 +23,7 @@ class MemoryPoolTls
 	struct BLOCK_NODE
 	{
 		DATA data;
-		BLOCK_NODE* next;
+		BLOCK_NODE* next = nullptr;
 	};
 
 
@@ -301,3 +305,5 @@ private:
 	bool placement_new;
 	int default_size;
 };
+
+#pragma warning(pop)

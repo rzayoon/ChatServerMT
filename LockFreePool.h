@@ -87,12 +87,6 @@ private:
 
 protected:
 
-	void Crash()
-	{
-		int* a = (int*)0;
-		*a = 0;
-
-	}
 
 	BLOCK_NODE* top;
 #ifdef LOCKFREE_DEBUG

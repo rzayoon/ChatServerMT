@@ -416,7 +416,7 @@ inline void CLanClient::DisconnectSession()
 
 inline bool CLanClient::RecvPost()
 {
-	DWORD recvbytes, flags = 0;
+	DWORD flags = 0;
 	bool ret = false;
 	DWORD error_code;
 
@@ -482,7 +482,7 @@ inline void CLanClient::SendPost()
 
 		if ((InterlockedExchange((LONG*)&m_sendFlag, true)) == false) // compare exchange
 		{
-			long long buf_cnt = m_sendQ.GetSize();
+			int buf_cnt = (int)m_sendQ.GetSize();
 			if (buf_cnt <= 0)
 			{
 				m_sendFlag = false;
@@ -515,8 +515,6 @@ inline void CLanClient::SendPost()
 				}
 
 				m_sentPacketCnt = buf_cnt;
-				DWORD sendbytes;
-
 
 				SOCKET socket = m_serverSock;
 				

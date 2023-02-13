@@ -95,15 +95,20 @@ public:
 		SetUnhandledExceptionFilter(MyExceptionFilter);
 	}
 
+#pragma warning(push)
+#pragma warning(disable: 6011)
+
 	static void Crash(void)
 	{
-		DWORD time = GetTickCount64();
+		ULONGLONG time = GetTickCount64();
 		ProfileDataOutText(L"lastProfile.txt");
 
 
 		int* p = nullptr;
 		*p = 0;
 	}
+
+#pragma warning(pop)
 
 	static void myPureCallHandler(void)
 	{
