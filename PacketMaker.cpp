@@ -1,3 +1,14 @@
+#include <Windows.h>
+
+#include <stdlib.h>
+#include <stdio.h>
+
+#include "LockFreeQueue.h"
+#include "LockFreeStack.h"
+#include "MemoryPoolTls.h"
+
+#include "CPacket.h"
+
 #include "PacketMaker.h"
 #include "User.h"
 #include "CommonProtocol.h"

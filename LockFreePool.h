@@ -4,6 +4,7 @@
 #include <new>
 #include <stdio.h>
 
+#include "CrashDump.h"
 //#define LOCKFREE_DEBUG
 
 
@@ -106,7 +107,7 @@ LockFreePool<DATA>::LockFreePool(int capacity, bool freeList)
 	if ((_int64)si.lpMaximumApplicationAddress != 0x00007ffffffeffff)
 	{
 		wprintf(L"Maximum Application Address Fault\n");
-		Crash();
+		CrashDump::Crash();
 	}
 
 	_capacity = capacity;

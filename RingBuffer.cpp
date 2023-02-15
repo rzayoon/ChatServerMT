@@ -1,5 +1,5 @@
-#include "RingBuffer.h"
 #include <string.h>
+#include "RingBuffer.h"
 
 RingBuffer::RingBuffer(int _bufSize)
 {

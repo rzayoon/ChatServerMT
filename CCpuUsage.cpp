@@ -1,4 +1,7 @@
+#include <Windows.h>
+
 #include "CCpuUsage.h"
+
 
 #include <stdio.h>
 

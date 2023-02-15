@@ -1,4 +1,12 @@
 #include <string.h>
+
+#include <stdlib.h>
+
+#include "LockFreeQueue.h"
+#include "LockFreeStack.h"
+#include "MemoryPoolTls.h"
+
+
 #include "CPacket.h"
 #include "NetProtocol.h"
 

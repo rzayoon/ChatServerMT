@@ -1,4 +1,6 @@
+
 #include <Windows.h>
+
 
 #include <thread>
 #include <utility>
@@ -7,16 +9,35 @@ using std::vector;
 #include <unordered_map>
 using std::unordered_map;
 
+
+#include "LockFreeQueue.h"
+#include "LockFreeStack.h"
+
+#include "MemoryPoolTls.h"
+#include "RingBuffer.h"
+
+#include "CPacket.h"
+
+#include "session.h"
+
+#include "Tracer.h"
+#include "CrashDump.h"
+
 #include "CNetServer.h"
 #include "User.h"
-#include "MemoryPoolTls.h"
+#include "CLanClient.h"
+
+#include "MonitorClient.h"
+#include "CCpuUsage.h"
+#include "CPDH.h"
+
 
 #include "ChatServer.h"
+
 #include "CommonProtocol.h"
 #include "ProcPacket.h"
 #include "Sector.h"
 #include "ObjectPool.h"
-#include "CrashDump.h"
 #include "ProfileTls.h"
 #include "TextParser.h"
 #include "CLog.h"
@@ -51,11 +72,11 @@ bool ChatServer::Start()
 	m_messageTps = 0;
 	m_collectMsgTPS = 0;
 
-	m_runTimeCheck = true;
+	//m_runTimeCheck = true;
 
 	m_pdh.Init();
 
-	h_timeOutThread = CreateThread(NULL, 0, TimeOutThread, (PVOID)&m_runTimeCheck, 0, NULL);
+	//h_timeOutThread = CreateThread(NULL, 0, TimeOutThread, (PVOID)&m_runTimeCheck, 0, NULL);
 
 	char ip[16];
 	int port;
@@ -108,8 +129,8 @@ void ChatServer::Stop()
 	if (m_monitorCli.IsConnected())
 		m_monitorCli.Disconnect();
 
-	m_runTimeCheck = false;
-	WaitForSingleObject(h_timeOutThread, INFINITE);
+	//m_runTimeCheck = false;
+	//WaitForSingleObject(h_timeOutThread, INFINITE);
 
 
 	return;
@@ -143,6 +164,11 @@ void ChatServer::OnClientLeave(unsigned long long session_id)
 
 	InterlockedIncrement(&m_messageTps);
 	return;
+}
+
+void ChatServer::OnClientTimeout(unsigned long long session_id)
+{
+	DisconnectSession(session_id);
 }
 
 void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
@@ -447,45 +473,45 @@ void ChatServer::Show()
 	m_CpuTime.Show();
 }
 
-void ChatServer::CheckTimeOut()
-{
-	int iCnt;
-
-	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
-	{
-		AcquireSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);
-	}
-
-
-	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
-	{
-		for (auto& iter : m_userMap[iCnt])
-		{
-			User* user = iter.second;
-			ULONG64 nowTick = GetTickCount64();
-
-			user->Lock();
-
-			ULONG64 lastTick = user->last_recv_time;
-			unsigned long long s_id = user->session_id;
-			if ((LONG64)(nowTick - lastTick) >= 40000) {
-				
-				// disconnect
-				DisconnectSession(user->session_id);
-				Log(L"Chat", enLOG_LEVEL_DEBUG, L"Time Out session: %lld %lld %lld\n", s_id, nowTick, lastTick);
-
-			}
-
-			user->Unlock();
-		}
-	}
-
-	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
-	{
-		ReleaseSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);
-	}
-
-}
+//void ChatServer::CheckTimeOut()
+//{
+//	int iCnt;
+//
+//	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
+//	{
+//		AcquireSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);
+//	}
+//
+//
+//	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
+//	{
+//		for (auto& iter : m_userMap[iCnt])
+//		{
+//			User* user = iter.second;
+//			ULONG64 nowTick = GetTickCount64();
+//
+//			user->Lock();
+//
+//			ULONG64 lastTick = user->last_recv_time;
+//			unsigned long long s_id = user->session_id;
+//			if ((LONG64)(nowTick - lastTick) >= 40000) {
+//				
+//				// disconnect
+//				DisconnectSession(user->session_id);
+//				Log(L"Chat", enLOG_LEVEL_DEBUG, L"Time Out session: %lld %lld %lld\n", s_id, nowTick, lastTick);
+//
+//			}
+//
+//			user->Unlock();
+//		}
+//	}
+//
+//	for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
+//	{
+//		ReleaseSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);
+//	}
+//
+//}
 
 void ChatServer::Collect()
 {
@@ -523,15 +549,15 @@ void ChatServer::SendMonitor(int time_stamp)
 	return;
 }
 
-DWORD TimeOutThread(PVOID param)
-{
-	bool* runTimeCheck = (bool*)param;
-
-	while (*runTimeCheck)
-	{
-		Sleep(1000);
-		g_chatServer.CheckTimeOut();
-	}
-
-	return 0;
-}
+//DWORD TimeOutThread(PVOID param)
+//{
+//	bool* runTimeCheck = (bool*)param;
+//
+//	while (*runTimeCheck)
+//	{
+//		Sleep(1000);
+//		g_chatServer.CheckTimeOut();
+//	}
+//
+//	return 0;
+//}

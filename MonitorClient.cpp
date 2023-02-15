@@ -1,3 +1,18 @@
+
+
+#include <Windows.h>
+
+#include "CrashDump.h"
+
+#include "LockFreeStack.h"
+#include "LockFreeQueue.h"
+#include "MemoryPoolTls.h"
+
+#include "RingBuffer.h"
+#include "CPacket.h"
+#include "Tracer.h"
+#include "CLanClient.h"
+
 #include "MonitorClient.h"
 
 #include "CommonProtocol.h"

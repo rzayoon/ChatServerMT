@@ -1,8 +1,6 @@
 #pragma once
 
-#include <Windows.h>
-
-#include "LockFreePool.h"
+#include "LockFreeStack.h"
 #include "MemoryPoolTls.h"
 
 //#define AUTO_PACKET

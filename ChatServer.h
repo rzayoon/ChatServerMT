@@ -1,7 +1,7 @@
 #pragma once
-#include "MonitorClient.h"
-#include "CCpuUsage.h"
-#include "CPDH.h"
+//#include "MonitorClient.h"
+//#include "CCpuUsage.h"
+//#include "CPDH.h"
 
 
 #define dfUSER_MAP_HASH 1
@@ -23,6 +23,8 @@ private:
 	bool OnConnectionRequest(const wchar_t* ip, unsigned short port);
 	void OnClientJoin(unsigned long long session_id);
 	void OnClientLeave(unsigned long long session_id);
+
+	void OnClientTimeout(unsigned long long session_id);
 
 	void OnRecv(unsigned long long session_id, CPacket* packet);
 
@@ -69,8 +71,8 @@ public:
 
 private:
 
-	HANDLE h_timeOutThread;
-	alignas(64) bool m_runTimeCheck;
+	//HANDLE h_timeOutThread;
+	//alignas(64) bool m_runTimeCheck;
 
 	MonitorClient m_monitorCli;
 	CCpuUsage m_CpuTime;
@@ -97,6 +99,6 @@ public:
 
 };
 
-DWORD TimeOutThread(PVOID param);
+//DWORD TimeOutThread(PVOID param);
 
 extern ChatServer g_chatServer;

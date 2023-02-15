@@ -1,9 +1,11 @@
 #pragma once
-#include <Windows.h>
-
-#include "CPacket.h"
-#include "Tracer.h"
-#include "RingBuffer.h"
+//#include <Windows.h>
+//
+//#include "MemoryPoolTls.h"
+//
+//#include "RingBuffer.h"
+//#include "CPacket.h"
+//#include "Tracer.h"
 
 #define SEND_ZEROCOPY
 

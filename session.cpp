@@ -1,3 +1,17 @@
+#include <Windows.h>
+
+#include <stdlib.h>
+#include <stdio.h>
+
+#include "LockFreeStack.h"
+#include "LockFreeQueue.h"
+#include "MemoryPoolTls.h"
+
+#include "CPacket.h"
+
+#include "RingBuffer.h"
+#include "Tracer.h"
+
 #include "session.h"
 
 
@@ -13,7 +27,7 @@ Session::Session()
 	send_flag = false;
 	send_packet_cnt = 0;
 	release_flag = true;
-	disconnect = 2;
+	disconnect = true;
 	InitializeCriticalSection(&session_cs);
 }
 

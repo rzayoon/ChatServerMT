@@ -1,11 +1,10 @@
 #pragma once
-#include <Windows.h>
 
-#include <stdlib.h>
+#/*include <stdlib.h>
 #include <stdio.h>
 
 #include "LockFreeQueue.h"
-#include "LockFreeStack.h"
+#include "LockFreeStack.h"*/
 
 #pragma warning(push)
 #pragma warning(disable: 6011)
@@ -16,7 +15,6 @@ class MemoryPoolTls
 {
 	enum
 	{
-		MAX_THREAD = 200,
 		DEFAULT_SIZE = 200
 	};
 

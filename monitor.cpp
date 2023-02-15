@@ -1,9 +1,7 @@
 #include <Windows.h>
 #include <stdio.h>
 
-#include "CNetServer.h"
 #include "monitor.h"
-#include "session.h"
 
 #ifdef MONITOR
 

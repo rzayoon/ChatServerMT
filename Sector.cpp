@@ -1,8 +1,8 @@
 
-
-#include "Sector.h"
-#include "User.h"
 #include "CrashDump.h"
+
+#include "User.h"
+#include "Sector.h"
 
 list<User*> g_SectorList[SECTOR_MAX_Y][SECTOR_MAX_X];
 SRWLOCK g_SectorLock[SECTOR_MAX_Y][SECTOR_MAX_X];

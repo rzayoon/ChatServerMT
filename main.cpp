@@ -13,11 +13,30 @@
 #include <unordered_map>
 using std::unordered_map;
 
+
+#include "RingBuffer.h"
+
+
+#include "LockFreeQueue.h"
+#include "LockFreeStack.h"
+
+#include "MemoryPoolTls.h"
+#include "CPacket.h"
+#include "session.h"
+
+#include "Tracer.h"
+#include "CrashDump.h"
+
 #include "CNetServer.h"
 #include "User.h"
-#include "MemoryPoolTls.h"
+#include "CLanClient.h"
+
+#include "MonitorClient.h"
+#include "CCpuUsage.h"
+#include "CPDH.h"
 
 #include "ChatServer.h"
+
 #include "TextParser.h"
 #include "ProfileTls.h"
 #include "CCpuUsage.h"
