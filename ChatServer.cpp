@@ -412,18 +412,15 @@ void ChatServer::SendMessageSector(CPacket* packet, int sector_x, int sector_y, 
 {
 	list<User*>& sector = g_SectorList[sector_y][sector_x];
 	User* target_user;
-
+	int cnt = 0;
 	for (auto iter = sector.begin(); iter != sector.end();)
 	{
 		target_user = (*iter);
-		++iter;  // 삭제 가능성 있으므로 미리 옮겨둠
-		if (user != target_user) {
-			SendMessageUni(packet, target_user);
-		}
-		else
-		{
-			SendMessageUni(packet, target_user);
-		}
+		++cnt;
+	
+		SendMessageUni(packet, target_user);
+
+		++iter;
 	}
 
 	return;

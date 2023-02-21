@@ -1,12 +1,13 @@
 
 #include "CrashDump.h"
 
+#include "Tracer.h"
 #include "User.h"
 #include "Sector.h"
 
 list<User*> g_SectorList[SECTOR_MAX_Y][SECTOR_MAX_X];
 SRWLOCK g_SectorLock[SECTOR_MAX_Y][SECTOR_MAX_X];
-
+//Tracer g_SecTracer;
 
 void Sector_AddUser(User* user)
 {
@@ -16,6 +17,9 @@ void Sector_AddUser(User* user)
 	unsigned short sector_y(user->sector_y), sector_x(user->sector_x);
 
 	g_SectorList[sector_y][sector_x].push_back(user);
+
+	__int64 acc_no = user->account_no;
+	//g_SecTracer.trace(enSECTORADD, acc_no, sector_y, sector_x);
 
 	user->is_in_sector = true;
 
@@ -31,6 +35,8 @@ void Sector_RemoveUser(User* user)
 	int sector_x = user->sector_x;
 
 	list<User*>& sector = g_SectorList[sector_y][sector_x];
+	long long acc_no = user->account_no;
+
 
 	for (auto iter = sector.begin(); iter != sector.end(); ++iter)
 	{
@@ -40,8 +46,9 @@ void Sector_RemoveUser(User* user)
 			break;
 		}
 
-
 	}
+
+	//g_SecTracer.trace(enSECTORDEL, acc_no, sector_y, sector_x);
 
 	user->is_in_sector = false;
 
@@ -85,7 +92,12 @@ void LockSectorAround(const SectorAround* sector_around)
 {
 	for (int cnt = 0; cnt < sector_around->count; cnt++)
 	{
-		AcquireSRWLockShared(&g_SectorLock[sector_around->around[cnt].y][sector_around->around[cnt].x]);
+		DWORD y = sector_around->around[cnt].y;
+		DWORD x = sector_around->around[cnt].x;
+
+
+		AcquireSRWLockShared(&g_SectorLock[y][x]);
+		//g_SecTracer.trace(enSECTORLOCKSHARED, 0, y, x);
 	}
 
 	return;
@@ -95,7 +107,11 @@ void UnlockSectorAround(const SectorAround* sector_around)
 {
 	for (int cnt = 0; cnt < sector_around->count; cnt++)
 	{
+		DWORD y = sector_around->around[cnt].y;
+		DWORD x = sector_around->around[cnt].x;
+
 		ReleaseSRWLockShared(&g_SectorLock[sector_around->around[cnt].y][sector_around->around[cnt].x]);
+		//g_SecTracer.trace(enSECTORUNLOCKSHARED, 0, y, x);
 	}
 
 	return;

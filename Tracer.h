@@ -13,7 +13,7 @@ class Tracer
 		unsigned int id;
 		unsigned long long seq;
 		char act;
-		PVOID session;
+		long long session;
 		long long info;
 		long long info2;
 	};
@@ -26,7 +26,7 @@ public:
 	~Tracer()
 	{
 	}
-	void trace(char code, const PVOID session, long long value = 0, long long value2 = 0);
+	void trace(char code, const long long session, long long value = 0, long long value2 = 0);
 
 	void Crash();
 private:

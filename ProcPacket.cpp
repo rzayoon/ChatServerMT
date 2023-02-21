@@ -154,7 +154,8 @@ bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 	lock_sector.reserve(2);
 
 	lock_sector.push_back({ static_cast<DWORD>(sector_x), static_cast<DWORD>(sector_y) });
-	if (user->is_in_sector && (sector_x != user->sector_x && sector_y != user->sector_y))
+
+	if (user->is_in_sector && (sector_x != user->sector_x || sector_y != user->sector_y))
 	{
 		lock_sector.push_back({ static_cast<DWORD>(user->sector_x), static_cast<DWORD>(user->sector_y) });
 	}
@@ -170,7 +171,11 @@ bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 
 	for (int i = 0; i < lock_sector.size(); i++)
 	{
-		AcquireSRWLockExclusive(&g_SectorLock[lock_sector[i].y][lock_sector[i].x]);
+		DWORD y = lock_sector[i].y;
+		DWORD x = lock_sector[i].x;
+
+		AcquireSRWLockExclusive(&g_SectorLock[y][x]);
+		//g_SecTracer.trace(enSECTORLOCKEXCLUSIVE, user->account_no, y, x);
 	}
 
 	Sector_RemoveUser(user);
@@ -182,7 +187,11 @@ bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 
 	for (int i = 0; i < lock_sector.size(); i++)
 	{
-		ReleaseSRWLockExclusive(&g_SectorLock[lock_sector[i].y][lock_sector[i].x]);
+		DWORD y = lock_sector[i].y;
+		DWORD x = lock_sector[i].x;
+
+		ReleaseSRWLockExclusive(&g_SectorLock[y][x]);
+		//g_SecTracer.trace(enSECTORLOCKEXCLUSIVE, user->account_no, y, x);
 	}
 
 	CPacket* send_packet = CPacket::Alloc();
