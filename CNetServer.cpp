@@ -32,6 +32,12 @@ bool CNetServer::Start(const wchar_t* ip, unsigned short port,
 		return false;
 	}
 
+	WSADATA wsa;
+	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
+	{
+		CrashDump::Crash();
+	}
+
 	m_nagle = nagle;
 
 	m_maxSession = maxSession;
@@ -181,6 +187,7 @@ void CNetServer::Stop()
 
 	
 
+	WSACleanup();
 
 	return;
 }

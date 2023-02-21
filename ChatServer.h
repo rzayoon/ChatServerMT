@@ -3,7 +3,7 @@
 
 
 
-
+#define dfCONREDIS
 #define dfUSER_MAP_HASH 1
 
 //#define dfTRACE_CHAT
@@ -110,10 +110,15 @@ private:
 
 public:
 
+
+
 	void ConnectRedis()
 	{
+#ifdef dfCONREDIS
 		m_redis.connect(m_redisIP, m_redisPort);
+#endif
 	}
+
 
 };
 

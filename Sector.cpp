@@ -1,7 +1,7 @@
 
 
-#include "Sector.h"
 #include "User.h"
+#include "Sector.h"
 #include "CrashDump.h"
 
 list<User*> g_SectorList[SECTOR_MAX_Y][SECTOR_MAX_X];
@@ -25,7 +25,7 @@ void Sector_AddUser(User* user)
 void Sector_RemoveUser(User* user)
 {
 	if (!user->is_in_sector)
-		CrashDump::Crash();
+		return;
 
 	int sector_y = user->sector_y;
 	int sector_x = user->sector_x;
