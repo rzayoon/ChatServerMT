@@ -174,7 +174,7 @@ bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 	lock_sector.reserve(2);
 	
 	lock_sector.push_back({ static_cast<DWORD>(sector_x), static_cast<DWORD>(sector_y) });
-	if (user->is_in_sector && (sector_x != user->sector_x && sector_y != user->sector_y))
+	if (user->is_in_sector && (sector_x != user->sector_x || sector_y != user->sector_y))
 	{
 		lock_sector.push_back({ static_cast<DWORD>(user->sector_x), static_cast<DWORD>(user->sector_y) });
 	}
@@ -183,8 +183,8 @@ bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 	std::sort(lock_sector.begin(), lock_sector.end(),
 		[](SectorPos a, SectorPos b)
 		{
-			if (a.y > b.y) return true;
-			else if (a.y == b.y && a.x > b.x) return true;
+			if (a.y < b.y) return true;
+			else if (a.y == b.y && a.x < b.x) return true;
 
 			return false;
 		});
