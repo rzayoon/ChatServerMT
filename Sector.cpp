@@ -25,7 +25,7 @@ void Sector_AddUser(User* user)
 void Sector_RemoveUser(User* user)
 {
 	if (!user->is_in_sector)
-		CrashDump::Crash();
+		return;
 
 	int sector_y = user->sector_y;
 	int sector_x = user->sector_x;

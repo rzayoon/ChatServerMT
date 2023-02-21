@@ -3,6 +3,9 @@
 
 #include <unordered_map>
 using std::unordered_map;
+#include <vector>
+using std::vector;
+#include <algorithm>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -80,48 +83,7 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 	if (!ret) return false;
 
 	{
-		//for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
-		//{
-		//	AcquireSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);
-		//}
-
-		//for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
-		//{
-		//	for (auto& iter : g_chatServer.m_userMap[iCnt])
-		//	{
-		//		ULONGLONG time = GetTickCount64();
-		//		User* temp_user = iter.second;
-		//		if (temp_user->account_no == account_no)
-		//		{
-		//			// 다른 세션 id에서 account no 중복 로그인
-
-		//			ULONGLONG t = GetTickCount64();
-
-		//			//CrashDump::Crash();
-
-		//			/*CPacket* send_packet = CPacket::Alloc();
-
-		//			MakeChatLogin(send_packet, 0, account_no);
-
-		//			SendMessageUni(send_packet, user);
-
-		//			CPacket::Free(send_packet);*/
-
-		//			InterlockedIncrement(&g_chatServer.m_duplicateLogin);
-		//			Log(L"SYS", enLOG_LEVEL_ERROR, L"Duplicated Login : session id[%lld]", temp_user->session_id);
-		//			//g_chatServer.DisconnectSession(temp_user->session_id);
-
-		//			ret = true;
-		//		}
-		//	}
-		//	if (!ret) break;
-		//}
-
-		//for (iCnt = 0; iCnt < dfUSER_MAP_HASH; iCnt++)
-		//{
-		//	ReleaseSRWLockShared(&g_chatServer.m_userMapCS[iCnt]);
-		//}
-
+		
 		AcquireSRWLockExclusive(&g_chatServer.m_accountMapSRW);
 		auto iter = g_chatServer.m_accountMap.find(account_no);
 
@@ -188,82 +150,39 @@ bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 
 	
 
-	// todo SectorMove 함수화 하기
-	short lock_y[2];
-	short lock_x[2];
-	int lock_cnt = 1;
+	vector<SectorPos> lock_sector;
+	lock_sector.reserve(2);
 
-	if (!user->is_in_sector) // 처음
+	lock_sector.push_back({ static_cast<DWORD>(sector_x), static_cast<DWORD>(sector_y) });
+	if (user->is_in_sector && (sector_x != user->sector_x && sector_y != user->sector_y))
 	{
-		lock_y[0] = sector_y;
-		lock_x[0] = sector_x;
-	}
-	else
-	{
-		
-		if (user->sector_y < sector_y)
-		{
-			lock_y[0] = user->sector_y;
-			lock_x[0] = user->sector_x;
-			lock_y[1] = sector_y;
-			lock_x[1] = sector_x;
-
-			lock_cnt++;
-		}
-		else if (user->sector_y > sector_y)
-		{
-			lock_y[0] = sector_y;
-			lock_x[0] = sector_x;
-			lock_y[1] = user->sector_y;
-			lock_x[1] = user->sector_x;
-
-			lock_cnt++;
-		}
-		else // y 같음
-		{
-			if (user->sector_x < sector_x)
-			{
-				lock_y[0] = user->sector_y;
-				lock_x[0] = user->sector_x;
-				lock_y[1] = sector_y;
-				lock_x[1] = sector_x;
-
-				lock_cnt++;
-			}
-			else if(user->sector_x > sector_x)
-			{
-				lock_y[0] = sector_y;
-				lock_x[0] = sector_x;
-				lock_y[1] = user->sector_y;
-				lock_x[1] = user->sector_x;
-
-				lock_cnt++;
-			}
-			else
-			{
-				lock_y[0] = sector_y;
-				lock_x[0] = sector_x;
-
-			}
-		}
+		lock_sector.push_back({ static_cast<DWORD>(user->sector_x), static_cast<DWORD>(user->sector_y) });
 	}
 
-	for (int i = 0; i < lock_cnt; i++)
+	std::sort(lock_sector.begin(), lock_sector.end(),
+		[](SectorPos a, SectorPos b)
+		{
+			if (a.y < b.y) return true;
+			else if (a.y == b.y && a.x < b.x) return true;
+
+			return false;
+		});
+
+	for (int i = 0; i < lock_sector.size(); i++)
 	{
-		AcquireSRWLockExclusive(&g_SectorLock[lock_y[i]][lock_x[i]]);
+		AcquireSRWLockExclusive(&g_SectorLock[lock_sector[i].y][lock_sector[i].x]);
 	}
 
-	if(user->is_in_sector)
-		Sector_RemoveUser(user);
+	Sector_RemoveUser(user);
 
 	user->sector_x = sector_x;
 	user->sector_y = sector_y;
 
 	Sector_AddUser(user);
 
-	for (int i = 0; i < lock_cnt; i++)
+	for (int i = 0; i < lock_sector.size(); i++)
 	{
-		ReleaseSRWLockExclusive(&g_SectorLock[lock_y[i]][lock_x[i]]);
+		ReleaseSRWLockExclusive(&g_SectorLock[lock_sector[i].y][lock_sector[i].x]);
 	}
 
 	CPacket* send_packet = CPacket::Alloc();

@@ -10,6 +10,12 @@ using std::list;
 
 struct SectorPos
 {
+	SectorPos() {}
+	SectorPos(DWORD _x, DWORD _y) : x(_x), y(_y)
+	{
+
+	}
+
 	DWORD x;
 	DWORD y;
 };
