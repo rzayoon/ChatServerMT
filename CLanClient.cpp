@@ -182,7 +182,7 @@ unsigned long _stdcall CLanClient::IoThread(void* param)
 	return 0;
 }
 
-inline void CLanClient::RunIoThread()
+void CLanClient::RunIoThread()
 {
 	int ret_gqcp;
 	DWORD thread_id = GetCurrentThreadId();
@@ -412,7 +412,7 @@ bool CLanClient::ConnectSession()
 	return ret;
 }
 
-inline void CLanClient::DisconnectSession()
+void CLanClient::DisconnectSession()
 {
 	if (m_disconnect == 0)
 	{
@@ -429,7 +429,7 @@ inline void CLanClient::DisconnectSession()
 	return;
 }
 
-inline bool CLanClient::RecvPost()
+bool CLanClient::RecvPost()
 {
 	DWORD flags = 0;
 	bool ret = false;
@@ -488,7 +488,7 @@ inline bool CLanClient::RecvPost()
 	return ret;
 }
 
-inline void CLanClient::SendPost()
+void CLanClient::SendPost()
 {
 
 	int temp_pend = InterlockedIncrement((LONG*)&m_pendCount);
@@ -565,7 +565,7 @@ inline void CLanClient::SendPost()
 	return;
 }
 
-inline int CLanClient::UpdateIOCount()
+int CLanClient::UpdateIOCount()
 {
 	int temp;
 	//tracer.trace(76, session, session->session_id);
@@ -581,7 +581,7 @@ inline int CLanClient::UpdateIOCount()
 	return temp;
 }
 
-inline void CLanClient::UpdatePendCount()
+void CLanClient::UpdatePendCount()
 {
 	// disconnect 한번에 확인
 	int temp;
@@ -613,8 +613,7 @@ void CLanClient::CancelIOPend()
 	return;
 }
 
-
-inline void CLanClient::Release()
+void CLanClient::Release()
 {
 
 	unsigned long long flag = *((unsigned long long*)(&m_ioCount));

@@ -231,7 +231,7 @@ unsigned long _stdcall CNetServer::TimeoutThread(void* param)
 
 
 
-inline void CNetServer::RunAcceptThread()
+void CNetServer::RunAcceptThread()
 {
 	int retVal;
 
@@ -373,7 +373,7 @@ inline void CNetServer::RunAcceptThread()
 }
 
 
-inline void CNetServer::RunIoThread()
+void CNetServer::RunIoThread()
 {
 	int ret_gqcp;
 	DWORD thread_id = GetCurrentThreadId();
@@ -726,7 +726,7 @@ bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 #endif
 
 
-inline void CNetServer::DisconnectSession(unsigned long long session_id)
+void CNetServer::DisconnectSession(unsigned long long session_id)
 {
 	unsigned short idx = session_id >> INDEX_BIT_SHIFT;
 	unsigned int id = session_id & ID_MASK;
@@ -759,7 +759,7 @@ inline void CNetServer::DisconnectSession(unsigned long long session_id)
 	return;
 }
 
-inline void CNetServer::Disconnect(Session* session)
+void CNetServer::Disconnect(Session* session)
 {
 	//InterlockedIncrement((LONG*)&session->io_count);
 	if (session->disconnect == 0)
@@ -780,7 +780,7 @@ inline void CNetServer::Disconnect(Session* session)
 	return;
 }
 
-inline bool CNetServer::RecvPost(Session* session)
+bool CNetServer::RecvPost(Session* session)
 {
 	DWORD recvbytes, flags = 0;
 	bool ret = false;
@@ -853,7 +853,7 @@ inline bool CNetServer::RecvPost(Session* session)
 	return ret;
 }
 
-inline void CNetServer::SendPost(Session* session)
+void CNetServer::SendPost(Session* session)
 {
 	LARGE_INTEGER start, end;
 
@@ -967,7 +967,7 @@ inline void CNetServer::SendPost(Session* session)
 	return;
 }
 
-inline int CNetServer::UpdateIOCount(Session* session)
+int CNetServer::UpdateIOCount(Session* session)
 {
 	int temp;
 	//tracer.trace(76, session, session->session_id);
@@ -983,7 +983,7 @@ inline int CNetServer::UpdateIOCount(Session* session)
 	return temp;
 }
 
-inline void CNetServer::UpdatePendCount(Session* session)
+void CNetServer::UpdatePendCount(Session* session)
 {
 	// disconnect ?œë²ˆ???•ì¸
 	int temp;
@@ -1016,7 +1016,7 @@ void CNetServer::CancelIOSession(Session* session)
 }
 
 
-inline void CNetServer::ReleaseSession(Session* session)
+void CNetServer::ReleaseSession(Session* session)
 {
 	
 	unsigned long long flag = *((unsigned long long*)(&session->io_count));
