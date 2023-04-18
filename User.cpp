@@ -1,3 +1,6 @@
+#include <list>
+using std::list;
+
 #include "User.h"
 
 

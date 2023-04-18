@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <list>
+using std::list;
+
 #include "LockFreeQueue.h"
 #include "LockFreeStack.h"
 #include "MemoryPoolTls.h"

@@ -6,7 +6,8 @@ using std::unordered_map;
 #include <vector>
 using std::vector;
 #include <algorithm>
-
+#include <list>
+using std::list;
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -30,7 +31,6 @@ using std::vector;
 #include "MonitorClient.h"
 #include "CCpuUsage.h"
 #include "CPDH.h"
-#include "User.h"
 
 #include "ChatServer.h"
 #include "ProcPacket.h"

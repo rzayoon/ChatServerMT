@@ -8,7 +8,8 @@
 using std::vector;
 #include <unordered_map>
 using std::unordered_map;
-
+#include <list>
+using std::list;
 
 #include "LockFreeQueue.h"
 #include "LockFreeStack.h"

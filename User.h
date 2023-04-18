@@ -44,6 +44,8 @@ public:
 
 	short sector_x;
 	short sector_y;
+	
+	list<User*>::iterator sector_iter;
 
 	unsigned long long last_recv_time;
 	unsigned long long old_recv_time;

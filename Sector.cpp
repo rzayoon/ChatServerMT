@@ -1,9 +1,13 @@
 
+#include <list>
+using std::list;
 #include "CrashDump.h"
 
 #include "Tracer.h"
 #include "User.h"
 #include "Sector.h"
+
+#include "ProfileTls.h"
 
 list<User*> g_SectorList[SECTOR_MAX_Y][SECTOR_MAX_X];
 SRWLOCK g_SectorLock[SECTOR_MAX_Y][SECTOR_MAX_X];
@@ -11,12 +15,19 @@ SRWLOCK g_SectorLock[SECTOR_MAX_Y][SECTOR_MAX_X];
 
 void Sector_AddUser(User* user)
 {
+	Profile pro(L"AddUser");
+
 	if (user->is_in_sector)
 		CrashDump::Crash();
 
 	unsigned short sector_y(user->sector_y), sector_x(user->sector_x);
+	list<User*>& sector = g_SectorList[sector_y][sector_x];
 
-	g_SectorList[sector_y][sector_x].push_back(user);
+#ifdef REMEMBER_ITER
+	user->sector_iter = sector.insert(sector.end(), user);
+#else
+	sector.push_back(user);
+#endif
 
 	__int64 acc_no = user->account_no;
 	//g_SecTracer.trace(enSECTORADD, acc_no, sector_y, sector_x);
@@ -28,6 +39,8 @@ void Sector_AddUser(User* user)
 
 void Sector_RemoveUser(User* user)
 {
+	Profile pro(L"RemoveUser");
+
 	if (!user->is_in_sector)
 		return;
 
@@ -35,19 +48,20 @@ void Sector_RemoveUser(User* user)
 	int sector_x = user->sector_x;
 
 	list<User*>& sector = g_SectorList[sector_y][sector_x];
-	long long acc_no = user->account_no;
+#ifdef REMEMBER_ITER
+	sector.erase(user->sector_iter);
+#else
+	auto iter_end = sector.end();
 
-
-	for (auto iter = sector.begin(); iter != sector.end(); ++iter)
+	for (auto iter = sector.begin(); iter != iter_end; ++iter)
 	{
 		if ((*iter) == user)
 		{
 			sector.erase(iter);
 			break;
 		}
-
 	}
-
+#endif
 	//g_SecTracer.trace(enSECTORDEL, acc_no, sector_y, sector_x);
 
 	user->is_in_sector = false;

@@ -1,11 +1,11 @@
 #pragma once
-#include <list>
 using std::list;
-
-#include "User.h"
 
 #define SECTOR_MAX_X 50
 #define SECTOR_MAX_Y 50
+
+
+#define REMEMBER_ITER
 
 enum SECTOR
 {
