@@ -247,7 +247,7 @@ public:
 		packet->AddRef();
 	}
 
-	PacketPtr(PacketPtr& src)
+	PacketPtr(const PacketPtr& src)
 	{
 		packet = src.packet;
 		if(packet)
@@ -264,7 +264,7 @@ public:
 		}
 	}
 
-	PacketPtr& operator=(PacketPtr& src)
+	PacketPtr& operator=(const PacketPtr& src)
 	{
 		if (packet)
 			packet->SubRef();

@@ -9,9 +9,9 @@ class LockFreeQueue
 {
 	struct Node
 	{
-		T data;
 		Node* next;
-
+		T data;
+		
 		Node()
 		{
 
@@ -45,7 +45,7 @@ private:
 };
 
 template<class T>
-inline LockFreeQueue<T>::LockFreeQueue(unsigned int capacity, bool free_list)
+LockFreeQueue<T>::LockFreeQueue(unsigned int capacity, bool free_list)
 {
 	_size = 0;
 	_freeList = free_list;
@@ -58,13 +58,13 @@ inline LockFreeQueue<T>::LockFreeQueue(unsigned int capacity, bool free_list)
 }
 
 template<class T>
-inline LockFreeQueue<T>::~LockFreeQueue()
+LockFreeQueue<T>::~LockFreeQueue()
 {
 	delete _pool;
 }
 
 template<class T>
-inline bool LockFreeQueue<T>::Enqueue(T data)
+bool LockFreeQueue<T>::Enqueue(T data)
 {
 	Node* node = _pool->Alloc();
 	if (node == nullptr)
@@ -116,8 +116,11 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 }
 
 template<class T>
-inline bool LockFreeQueue<T>::Dequeue(T* data)
+bool LockFreeQueue<T>::Dequeue(T* data)
 {
+	if (_size <= 0)
+		return false;
+
 	InterlockedDecrement64(&_size);
 	unsigned long long old_head;
 	Node* head;
@@ -142,14 +145,14 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 			// 정말 없었으면 안들어왔어야 함.
 			// 그럼에도 원인이 될 수 있는 상황
 			// 1. 지금 보고 있는 head가 다른 스레드에서 dequeue되었고 다시 enque과정에서 next가 null로 쓰여졌다.
-			// 2. 한 스레드가 enque에서 노드 하나를 tail로 저장하고 잠시 안돌았음
-			//    -> 해당 노드가 queue에서 빠져나감 -> 다시 enqueue에서 next = null 됨
-			//    -> 멈춰있던 스레드가 동작하면서 next에 이어버림 -> 사이즈 증가
-			//    -> 해당 노드를 연결해야하는 스레드가 정지중.
-			//    -> 이 때 디큐 시도하는 스레드는 기다리느라 못하는 상태가 됨.
+			// 2. A 스레드가 enque에서 a 노드를 지역 tail로 저장하고 잠시 안돌았음
+			//    -> a 노드가 queue에서 빠져나감(pool 반환) -> 다시 enqueue(alloc)에서 next = null 됨 큐에 연결은 x
+			//    -> 멈춰있던 A 스레드가 동작하면서 새 노드를 a 노드의 next에 이어버림 -> 사이즈 증가
+			//    -> a 노드를 큐에 연결해야하는 스레드가 정지중.
+			//    -> 이 때 디큐 시도하는 스레드는 기다리느라 못하는 상태가 됨 (사이즈 상으로는 큐에 원소가 있지만)
 			//    이 문제는 enqueue 중인 스레드가 일을 마치면 해결이 된다.
 			//    하지만 다른 스레드 때문에 해야할 일을 못하는 것은 락프리의 목적에 위배된다.
-			//    next가 null로 읽히면 1, 2의 상황 구분하지 않고 그냥 없는 것으로 본다..
+			//    next가 null로 읽히면 1, 2의 상황 구분하지 않고 사이즈에 상관 없이 그냥 없는 것으로 본다..
 			InterlockedIncrement64(&_size);
 			return false;
 		}

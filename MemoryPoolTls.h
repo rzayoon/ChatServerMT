@@ -20,8 +20,8 @@ class MemoryPoolTls
 
 	struct BLOCK_NODE
 	{
-		DATA data;
 		BLOCK_NODE* next = nullptr;
+		DATA data;
 	};
 
 
@@ -83,14 +83,14 @@ class MemoryPoolTls
 
 			}
 		}
-		BLOCK_NODE* Alloc()
+		DATA* Alloc()
 		{
 	
-			BLOCK_NODE* data = top;
+			BLOCK_NODE* node = top;
 			top = top->next;
 			size--;
 
-			return data;
+			return &node->data;
 		}
 
 		void Renew()
@@ -120,10 +120,10 @@ class MemoryPoolTls
 
 		}
 
-		void Free(BLOCK_NODE* data)
+		void Free(DATA* data)
 		{
 			size++;
-			BLOCK_NODE* node = data;
+			BLOCK_NODE* node = (BLOCK_NODE*)((unsigned long long)data - alignof(DATA));
 			node->next = top;
 			top = node;
 
@@ -237,7 +237,7 @@ public:
 				
 			}
 		}
-		ret = (DATA*)td_pool->Alloc();
+		ret = td_pool->Alloc();
 		
 		if (placement_new)
 			new(ret) DATA;
@@ -269,7 +269,7 @@ public:
 
 		if (td_pool->size == size) //풀 초과분
 		{
-			td_chunk->Free((BLOCK_NODE*)data);
+			td_chunk->Free(data);
 
 			if (td_chunk->size == size) //청크도 꽉참
 			{
@@ -280,7 +280,7 @@ public:
 		}
 		else
 		{
-			td_pool->Free((BLOCK_NODE*)data);
+			td_pool->Free(data);
 		}
 
 		InterlockedDecrement((LONG*)&use_size);

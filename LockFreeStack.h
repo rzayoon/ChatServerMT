@@ -8,8 +8,8 @@ class LockFreeStack
 {
 	struct Node
 	{
-		T data;
 		Node* next;
+		T data;
 
 		Node()
 		{
@@ -43,7 +43,7 @@ private:
 };
 
 template<class T>
-inline LockFreeStack<T>::LockFreeStack(unsigned int size, bool freeList)
+LockFreeStack<T>::LockFreeStack(unsigned int size, bool freeList)
 {
 	_size = 0;
 	_top = nullptr;
@@ -52,13 +52,13 @@ inline LockFreeStack<T>::LockFreeStack(unsigned int size, bool freeList)
 }
 
 template<class T>
-inline LockFreeStack<T>::~LockFreeStack()
+LockFreeStack<T>::~LockFreeStack()
 {
 	delete _pool;
 }
 
 template<class T>
-inline bool LockFreeStack<T>::Push(T data)
+bool LockFreeStack<T>::Push(T data)
 {
 	Node* node = _pool->Alloc();
 	if (node == nullptr)
@@ -94,7 +94,7 @@ inline bool LockFreeStack<T>::Push(T data)
 } 
 
 template<class T>
-inline bool LockFreeStack<T>::Pop(T* data)
+bool LockFreeStack<T>::Pop(T* data)
 {
 	unsigned long long old_top;
 	Node* old_top_addr;
