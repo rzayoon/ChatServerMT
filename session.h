@@ -7,7 +7,7 @@
 //#include "Tracer.h"
 
 #define STACK_INDEX
-//#define TRACE_SESSION
+#define TRACE_SESSION
 
 #define MAX_SENDQ 200
 
@@ -27,8 +27,9 @@ enum
 	enRecvAsync = 12,
 	enRecvSync = 13,
 	enRetGQCS = 20,
-	enRelease = 99
-	
+	enReleasePend = 98,
+	enRelease,
+
 };
 #endif
 
@@ -76,9 +77,11 @@ private:
 	int release_flag;
 	alignas(64) int pend_count; // CancelIO 타이밍 잡기
 	int disconnect;
-	alignas(64) int send_flag;
+	alignas(64) unsigned int send_post_flag;
+	alignas(64) unsigned int send_pend_flag;
 	alignas(64) int send_packet_cnt;  // Send에 넣은 Packet 객체 삭제에 필요
 	alignas(64) ULONG64 last_recv_time;
+
 
 	wchar_t ip[16];
 	unsigned short port;

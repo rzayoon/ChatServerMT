@@ -99,6 +99,7 @@ LockFreePool<DATA>::LockFreePool(int capacity, bool freeList)
 	_freeList = freeList;
 	_useCount = 0;
 
+	top = nullptr;
 
 	for (int i = 0; i < capacity; i++)
 	{

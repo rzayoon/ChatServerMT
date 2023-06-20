@@ -14,6 +14,8 @@
 using std::unordered_map;
 #include <list>
 using std::list;
+#include <unordered_set>
+using std::unordered_set;
 
 #include "RingBuffer.h"
 
@@ -23,9 +25,10 @@ using std::list;
 
 #include "MemoryPoolTls.h"
 #include "CPacket.h"
+#include "Tracer.h"
+
 #include "session.h"
 
-#include "Tracer.h"
 #include "CrashDump.h"
 
 #include "CNetServer.h"
@@ -86,9 +89,6 @@ int main()
 	}
 
 	timeEndPeriod(1);
-
-	wprintf(L"Fine Closing\n");
-	Sleep(2000);
 
 
 	return 0;

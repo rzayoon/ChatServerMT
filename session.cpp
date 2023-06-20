@@ -24,7 +24,8 @@ Session::Session()
 	port = 0;
 	session_id = 0;
 	io_count = 0;
-	send_flag = false;
+	send_post_flag = 0;
+	send_pend_flag = 0;
 	send_packet_cnt = 0;
 	release_flag = true;
 	disconnect = true;

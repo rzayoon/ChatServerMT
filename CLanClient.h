@@ -44,8 +44,7 @@ public:
 
 	~CLanClient()
 	{
-		if(m_isConnected)
-			Disconnect();
+
 	}
 
 	bool Connect(
@@ -134,9 +133,6 @@ private:
 	void Leave();
 
 
-
-
-	//Session m_session;
 	SOCKET m_serverSock;
 	
 	OVERLAPPED m_recvOverlapped;

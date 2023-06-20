@@ -20,9 +20,9 @@ using std::list;
 
 #include "CPacket.h"
 #include "RingBuffer.h"
+#include "Tracer.h"
 #include "session.h"
 
-#include "Tracer.h"
 
 #include "CNetServer.h"
 #include "User.h"
@@ -91,6 +91,8 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 		{
 			// 중복
 			InterlockedIncrement(&g_chatServer.m_duplicateLogin);
+			CrashDump::Crash();
+			// 임계영역에서 로그 남기는거 지양해야함
 			Log(L"Chat", enLOG_LEVEL_ERROR, L"Duplicated Login [%lld]", account_no);
 			g_chatServer.DisconnectSession(iter->second);
 			ret = false;
@@ -175,7 +177,6 @@ bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 		DWORD x = lock_sector[i].x;
 
 		AcquireSRWLockExclusive(&g_SectorLock[y][x]);
-		//g_SecTracer.trace(enSECTORLOCKEXCLUSIVE, user->account_no, y, x);
 	}
 
 	Sector_RemoveUser(user);
@@ -191,7 +192,6 @@ bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 		DWORD x = lock_sector[i].x;
 
 		ReleaseSRWLockExclusive(&g_SectorLock[y][x]);
-		//g_SecTracer.trace(enSECTORLOCKEXCLUSIVE, user->account_no, y, x);
 	}
 
 	CPacket* send_packet = CPacket::Alloc();

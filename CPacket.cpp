@@ -40,7 +40,7 @@ CPacket::~CPacket()
 
 void CPacket::Release(void)
 {
-	if (buffer != nullptr)	delete[] hidden_buf;
+	if (hidden_buf)	delete[] hidden_buf;
 }
 
 void CPacket::Clear(void)

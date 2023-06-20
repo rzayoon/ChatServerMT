@@ -9,6 +9,7 @@
 //#include "CrashDump.h"
 
 #define SEND_ZEROCOPY
+#define SYNC_IO_MONITOR
 
 
 /// <summary>
@@ -28,8 +29,8 @@ class CNetServer
 	};
 
 	enum {
-		enSEND_POST = 1,
-		enRELEASE_POST = 2,
+		enSEND_PEND = 1,
+		enRELEASE_PEND = 2,
 		enCANCEL_IO = 3
 	};
 
@@ -193,12 +194,13 @@ private:
 	bool RecvPost(Session* session);
 	void SendPost(Session* session);
 
+	void SendPend(Session* session);
 	
 	void Disconnect(Session* session);
 	int UpdateIOCount(Session* session);
 	void UpdatePendCount(Session* session);
 	void CancelIOSession(Session* session);
-	void ReleaseSession(Session* session);
+	void ReleasePend(Session* session);
 	void Release(Session* session);
 
 	bool m_isRunning;
@@ -216,7 +218,11 @@ private:
 #endif
 
 	alignas(64) unsigned long long m_totalAccept = 0;
-	alignas(64) int m_sessionCnt = 0;
+	alignas(64) unsigned int m_sessionCnt = 0;
+	alignas(64) long m_syncRecv = 0;
+	alignas(64) long m_syncSend = 0;
+	alignas(64) long m_recvByte = 0;
+	alignas(64) long m_sendByte = 0;
 	unsigned long long m_preAccept = 0;
 	int m_acceptErr = 0;
 

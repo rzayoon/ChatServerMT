@@ -35,28 +35,7 @@ class MemoryPoolTls
 			default_size = _default_size;
 			placement_new = _placement_new;
 
-
-			if (placement_new)
-			{
-				for (int i = 0; i < size; i++)
-				{
-					BLOCK_NODE* temp = (BLOCK_NODE*)_aligned_malloc(sizeof(BLOCK_NODE), alignof(BLOCK_NODE));
-
-					temp->next = top;
-					top = temp;
-
-				}
-			}
-			else
-			{
-				for (int i = 0; i < size; i++)
-				{
-					BLOCK_NODE* temp = new BLOCK_NODE;
-
-					temp->next = top;
-					top = temp;
-				}
-			}
+			Renew();
 
 		}
 
@@ -226,15 +205,14 @@ public:
 			}
 			else if (chunk_pool.Pop(&chunk_top))
 			{ // 가용 청크 가져옴
-				InterlockedIncrement((LONG*)&chunk_cnt);
+				InterlockedDecrement((LONG*)&chunk_cnt);
 				td_pool->top = chunk_top;
 				td_pool->size = default_size;
 
 			}
 			else // 모아둔 청크도 없음.
 			{
-				td_pool->Renew();
-				
+				td_pool->Renew(); // 생성
 			}
 		}
 		ret = td_pool->Alloc();
@@ -274,8 +252,9 @@ public:
 			if (td_chunk->size == size) //청크도 꽉참
 			{
 				chunk_pool.Push(td_chunk->top);
-				InterlockedIncrement((LONG*)&chunk_cnt);
 				td_chunk->Clear();
+
+				InterlockedIncrement((LONG*)&chunk_cnt);
 			}
 		}
 		else

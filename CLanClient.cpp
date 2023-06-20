@@ -145,18 +145,12 @@ void CLanClient::Disconnect()
 		return;
 	}
 
-	m_isConnected = false;
-
-	// session 연결 끊기
-	DisconnectSession();
 	
-	// session 릴리즈될 때까지 대기
-	while (m_releaseFlag == 0)
-	{
-		Sleep(0); 
-	}
+
+	DisconnectSession();
 
 	ReleaseClient();
+	
 
 	wprintf(L"Disconnected\n");
 
@@ -167,6 +161,13 @@ void CLanClient::Disconnect()
 
 void CLanClient::ReleaseClient(void)
 {
+
+	// session 연결 끊기
+
+	for(int i = 0; i < m_iocpWorkerNum; i++)
+		PostQueuedCompletionStatus(m_hcp, 0, 0, 0);
+
+	WaitForMultipleObjects(m_iocpWorkerNum, m_hWorkerThread, TRUE, INFINITE);
 
 	m_isConnected = false;
 
@@ -217,12 +218,8 @@ void CLanClient::RunIoThread()
 			case ERROR_OPERATION_ABORTED:
 				break;
 			default:
-
-
 				Log(L"SYS", enLOG_LEVEL_ERROR, L"GQCS return 0 [%d] session id : %lld Count %d", error_code, m_sessionId, cnt);
-			
 
-				//OnError(error_code, L"GQCS return 0");
 				break;
 
 			}

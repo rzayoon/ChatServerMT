@@ -8,6 +8,8 @@
 using std::vector;
 #include <unordered_map>
 using std::unordered_map;
+#include <unordered_set>
+using std::unordered_set;
 #include <list>
 using std::list;
 
@@ -19,9 +21,9 @@ using std::list;
 
 #include "CPacket.h"
 
+#include "Tracer.h"
 #include "session.h"
 
-#include "Tracer.h"
 #include "CrashDump.h"
 
 #include "CNetServer.h"
@@ -73,11 +75,8 @@ bool ChatServer::Start()
 	m_messageTps = 0;
 	m_collectMsgTPS = 0;
 
-	//m_runTimeCheck = true;
-
 	m_pdh.Init();
 
-	//h_timeOutThread = CreateThread(NULL, 0, TimeOutThread, (PVOID)&m_runTimeCheck, 0, NULL);
 
 	char ip[16];
 	int port;
@@ -133,6 +132,7 @@ void ChatServer::Stop()
 	//m_runTimeCheck = false;
 	//WaitForSingleObject(h_timeOutThread, INFINITE);
 
+	CNetServer::Stop();
 
 	return;
 }
