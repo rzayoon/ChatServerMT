@@ -31,12 +31,10 @@ class MemoryPoolTls
 
 		POOL(int _init_size, int _default_size, bool _placement_new)
 		{
-			size = _init_size;
 			default_size = _default_size;
 			placement_new = _placement_new;
 
-			Renew();
-
+			Generate(_init_size);
 		}
 
 		~POOL()
@@ -72,9 +70,20 @@ class MemoryPoolTls
 			return &node->data;
 		}
 
-		void Renew()
+		
+		void Free(DATA* data)
 		{
-			size = default_size;
+			size++;
+			BLOCK_NODE* node = (BLOCK_NODE*)((unsigned long long)data - alignof(DATA));
+			node->next = top;
+			top = node;
+
+			return;
+		}
+
+		void Generate(int _size)
+		{
+			size = _size;
 			if (placement_new)
 			{
 				for (int i = 0; i < size; i++)
@@ -97,16 +106,6 @@ class MemoryPoolTls
 				}
 			}
 
-		}
-
-		void Free(DATA* data)
-		{
-			size++;
-			BLOCK_NODE* node = (BLOCK_NODE*)((unsigned long long)data - alignof(DATA));
-			node->next = top;
-			top = node;
-
-			return;
 		}
 
 		int GetSize()
@@ -144,8 +143,8 @@ public:
 			wprintf(L"%d tls error\n", GetLastError());
 		placement_new = _placement_new;
 
+		alloc_size = 0;
 		use_size = 0;
-		chunk_cnt = 0;
 		default_size = _default_size;
 	}
 
@@ -177,6 +176,8 @@ public:
 		}
 	}
 
+
+
 	DATA* Alloc()
 	{
 		// TLS로 변경 가능한 부분
@@ -184,8 +185,8 @@ public:
 		if (td == nullptr)
 		{
 			td = new THREAD_DATA;
-			td->pool = new POOL(default_size, default_size, placement_new);
-			td->chunk = new POOL(0, default_size, placement_new);
+			td->pool = GeneratePool(default_size);
+			td->chunk = GeneratePool(0);
 			TlsSetValue(tls_index, (LPVOID)td);
 		}
 
@@ -201,18 +202,19 @@ public:
 			{
 				td_pool->top = td_chunk->top;
 				td_pool->size = td_chunk->size;
+				td_chunk->top = nullptr;
 				td_chunk->size = 0;
 			}
 			else if (chunk_pool.Pop(&chunk_top))
 			{ // 가용 청크 가져옴
-				InterlockedDecrement((LONG*)&chunk_cnt);
+				
 				td_pool->top = chunk_top;
 				td_pool->size = default_size;
 
 			}
 			else // 모아둔 청크도 없음.
 			{
-				td_pool->Renew(); // 생성
+				GeneratePool(td_pool); // 생성
 			}
 		}
 		ret = td_pool->Alloc();
@@ -234,8 +236,8 @@ public:
 		if (td == nullptr)
 		{
 			td = new THREAD_DATA;
-			td->pool = new POOL(default_size, default_size, placement_new);
-			td->chunk = new POOL(0, default_size, placement_new);
+			td->pool = GeneratePool(default_size);
+			td->chunk = GeneratePool(0);
 			TlsSetValue(tls_index, (LPVOID)td);
 		}
 		int size = default_size;
@@ -247,15 +249,14 @@ public:
 
 		if (td_pool->size == size) //풀 초과분
 		{
-			td_chunk->Free(data);
 
 			if (td_chunk->size == size) //청크도 꽉참
 			{
 				chunk_pool.Push(td_chunk->top);
-				td_chunk->Clear();
-
-				InterlockedIncrement((LONG*)&chunk_cnt);
+				td_chunk->Clear();	
 			}
+
+			td_chunk->Free(data);
 		}
 		else
 		{
@@ -272,12 +273,30 @@ public:
 		return use_size;
 	}
 
+	int GetAllocSize()
+	{
+		return alloc_size;
+	}
+
 private:
+
+	POOL* GeneratePool(int _init_size)
+	{
+		InterlockedAdd((LONG*)&alloc_size, _init_size);
+		return new POOL(_init_size, default_size, placement_new);
+	}
+
+	void GeneratePool(POOL* _pool)
+	{
+		InterlockedAdd((LONG*)&alloc_size, default_size);
+		_pool->Generate(default_size);
+	}
+
 
 	LockFreeStack<BLOCK_NODE*> chunk_pool = LockFreeStack<BLOCK_NODE*>(0);
 
 	alignas(64) int use_size;
-	alignas(64) int chunk_cnt;
+	alignas(64) int alloc_size;
 	alignas(64) int tls_index;
 	bool placement_new;
 	int default_size;

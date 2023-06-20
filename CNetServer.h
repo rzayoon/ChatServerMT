@@ -20,12 +20,13 @@
 /// GetSessionCount(), Show()
 /// 
 /// </summary>
+/// 
 class CNetServer
 {
 	enum {
 		ID_MASK = 0xFFFFFFFF,	
 		INDEX_BIT_SHIFT = 32,
-		MAX_WSABUF = 30
+		MAX_WSABUF = 2
 	};
 
 	enum {
@@ -223,6 +224,7 @@ private:
 	alignas(64) long m_syncSend = 0;
 	alignas(64) long m_recvByte = 0;
 	alignas(64) long m_sendByte = 0;
+	alignas(64) unsigned long long m_maxTransferred = 0;
 	unsigned long long m_preAccept = 0;
 	int m_acceptErr = 0;
 

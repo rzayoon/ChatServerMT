@@ -212,6 +212,11 @@ private:
 		packet_key = key;
 	}
 
+	inline static long long GetPacketAlloc()
+	{
+		return packet_pool.GetAllocSize();
+	}
+
 protected:
 
 	// Á¤Àû ¸â¹ö

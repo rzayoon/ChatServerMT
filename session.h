@@ -7,7 +7,7 @@
 //#include "Tracer.h"
 
 #define STACK_INDEX
-#define TRACE_SESSION
+//#define TRACE_SESSION
 
 #define MAX_SENDQ 200
 
@@ -26,7 +26,9 @@ enum
 	enRecvFailed = 11,
 	enRecvAsync = 12,
 	enRecvSync = 13,
-	enRetGQCS = 20,
+	enPost = 20,
+	enSendResult = 21,
+	enRecvResult = 22,
 	enReleasePend = 98,
 	enRelease,
 
@@ -64,12 +66,14 @@ private:
 	OVERLAPPED send_overlapped;
 	SOCKET send_sock;
 	DWORD sendbytes;
-	RingBuffer recv_q = RingBuffer(2000);
+	RingBuffer recv_buffer = RingBuffer(2000);
 #ifdef AUTO_PACKET
 	LockFreeQueue<PacketPtr> send_q = LockFreeQueue<PacketPtr>(MAX_SENDQ, false);
 #else
 	LockFreeQueue<CPacket*> send_q = LockFreeQueue<CPacket*>(MAX_SENDQ, false);
 #endif
+
+	RingBuffer send_buffer = RingBuffer(4000);
 
 	// interlock
 	alignas(64) SOCKET sock;

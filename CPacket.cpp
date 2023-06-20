@@ -11,10 +11,10 @@
 #include "NetProtocol.h"
 
 
+
 CPacket::CPacket(int size)
 {
 	buffer_size = size;
-	
 
 	hidden_buf = new char[size + sizeof(NetPacketHeader)];
 	buffer = hidden_buf + sizeof(NetPacketHeader);

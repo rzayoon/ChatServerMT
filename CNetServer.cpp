@@ -345,7 +345,8 @@ void CNetServer::RunAcceptThread()
 			session->disconnect = false;
 			session->last_recv_time = GetTickCount64();
 			// Send Q는 release 시에 정리함.
-			session->recv_q.ClearBuffer();
+			session->recv_buffer.ClearBuffer();
+			session->send_buffer.ClearBuffer();
 			session->release_flag = 0;
 
 #ifdef TRACE_SESSION
@@ -435,14 +436,15 @@ void CNetServer::RunIoThread()
 			}
 		}
 
-#ifdef TRACE_SESSION
-		session->pending_tracer.trace(enRetGQCS, (unsigned long long)overlapped, cbTransferred, session->GetSessionID());
-#endif
+
 
 		if (cbTransferred == 0 || session->disconnect)
 		{
 #ifdef TRACE_SERVER
 			tracer.trace(78, session, session->session_id);
+#endif
+#ifdef TRACE_SESSION
+			session->pending_tracer.trace(enPost, (unsigned long long)overlapped, cbTransferred, session->GetSessionID());
 #endif
 
 			switch ((unsigned long long)overlapped)
@@ -480,23 +482,27 @@ void CNetServer::RunIoThread()
 		else {
 			if (&session->recv_overlapped == overlapped) // recv
 			{
+#ifdef TRACE_SESSION
+				session->pending_tracer.trace(enRecvResult, cbTransferred, session->GetSessionID());
+#endif
+
 				session->last_recv_time = GetTickCount64();
 
 				InterlockedAdd(&m_recvByte, cbTransferred);
-				session->recv_q.MoveRear(cbTransferred);
+				session->recv_buffer.MoveRear(cbTransferred);
 
 				while (true)
 				{
 					NetPacketHeader header;
 
-					if (session->recv_q.Peek((char*)&header, sizeof(header)) != sizeof(header))
+					if (session->recv_buffer.Peek((char*)&header, sizeof(header)) != sizeof(header))
 						break;
 
-					int q_size = session->recv_q.GetFillSize();
+					int q_size = session->recv_buffer.GetFillSize();
 					if (header.len + sizeof(header) > q_size)
 						break;
 
-					if (header.len == 0 || header.len > session->recv_q.GetEmptySize()) {
+					if (header.len == 0 || header.len > session->recv_buffer.GetEmptySize()) {
 						Log(L"SYS", enLOG_LEVEL_DEBUG, L"Header Length Error %d", header.len);
 						Disconnect(session);
 
@@ -515,7 +521,7 @@ void CNetServer::RunIoThread()
 					monitor.AddOnRecvTime(&on_recv_st, &on_recv_ed);
 #else
 					CPacket* packet = CPacket::Alloc();
-					int ret_deq = session->recv_q.Dequeue(packet->GetBufferPtrNet(), header.len + sizeof(header));
+					int ret_deq = session->recv_buffer.Dequeue(packet->GetBufferPtrNet(), header.len + sizeof(header));
 					packet->MoveWritePos(header.len);
 					if (!packet->Decode())
 					{
@@ -539,18 +545,21 @@ void CNetServer::RunIoThread()
 			}
 			else if (&session->send_overlapped == overlapped) // send 결과 처리
 			{
-
+#ifdef TRACE_SESSION
+				session->pending_tracer.trace(enSendResult, cbTransferred, session->GetSessionID());
+#endif
 				OnSend(*(unsigned long long*) & session->session_id, cbTransferred);
 				if (session->send_sock != session->sock)
 					CrashDump::Crash();
 
 				InterlockedAdd(&m_sendByte, cbTransferred);
+				
+				unsigned long long local_maxTransferred = m_maxTransferred;
+				if (local_maxTransferred < cbTransferred)
+					InterlockedCompareExchange(&m_maxTransferred, cbTransferred, local_maxTransferred);
 
-				int packet_cnt = session->send_packet_cnt;
-				if (packet_cnt == 0)
-				{
-					CrashDump::Crash();
-				}
+
+
 #ifdef AUTO_PACKET				
 				while (packet_cnt > 0)
 				{
@@ -559,14 +568,24 @@ void CNetServer::RunIoThread()
 
 
 #else
+				/*
+				int packet_cnt = session->send_packet_cnt;
+				if (packet_cnt == 0)
+				{
+					CrashDump::Crash();
+				}
+
+				
 				while (packet_cnt > 0)
 				{
 
 					session->temp_packet[--packet_cnt]->SubRef();
-				}
+				}*/
+				session->send_buffer.MoveFront(cbTransferred);
+
+
 #endif
 
-				session->send_packet_cnt = 0;
 				session->send_post_flag = false;
 
 				//tracer.trace(32, session, session->session_id);
@@ -770,18 +789,18 @@ bool CNetServer::RecvPost(Session* session)
 		
 		ZeroMemory(&session->recv_overlapped, sizeof(session->recv_overlapped));
 
-		int emptySize = session->recv_q.GetEmptySize();
-		int size1 = session->recv_q.DirectEnqueSize();
+		int emptySize = session->recv_buffer.GetEmptySize();
+		int size1 = session->recv_buffer.DirectEnqueSize();
 
 		WSABUF wsabuf[2];
 		int cnt = 1;
-		wsabuf[0].buf = session->recv_q.GetRearPtr();
+		wsabuf[0].buf = session->recv_buffer.GetRearPtr();
 		wsabuf[0].len = size1;
 
 		if (size1 < emptySize)
 		{
 			++cnt;
-			wsabuf[1].buf = session->recv_q.GetBufPtr();
+			wsabuf[1].buf = session->recv_buffer.GetBufPtr();
 			wsabuf[1].len = emptySize - size1;
 		}
 
@@ -844,9 +863,9 @@ void CNetServer::SendPost(Session* session)
 	if (session->disconnect == 0)
 	{
 
-		if ((InterlockedExchange((LONG*)&session->send_post_flag, true)) == false) // compare exchange
+		if ((InterlockedExchange((LONG*)&session->send_post_flag, true)) == false)
 		{
-			long long buf_cnt = session->send_q.GetSize();
+			int buf_cnt = session->send_q.GetSize();
 			if (buf_cnt <= 0)
 			{
 				session->send_post_flag = false;
@@ -857,11 +876,8 @@ void CNetServer::SendPost(Session* session)
 
 				ZeroMemory(&session->send_overlapped, sizeof(session->send_overlapped));
 
-				if (buf_cnt > MAX_WSABUF)
-					buf_cnt = MAX_WSABUF;
 
-				WSABUF wsabuf[MAX_WSABUF];
-				ZeroMemory(wsabuf, sizeof(wsabuf));
+
 
 #ifdef AUTO_PACKET
 				PacketPtr packet;
@@ -878,27 +894,65 @@ void CNetServer::SendPost(Session* session)
 				}
 #else
 
-				CPacket* packet;
+				/*
 				for (int cnt = 0; cnt < buf_cnt;)
 				{
-					if (!session->send_q.Dequeue(&packet)) continue;
+					CPacket* packet;
+					if (!session->send_q.Dequeue(&packet)) break;
 
 					wsabuf[cnt].buf = packet->GetBufferPtrNet();
 					wsabuf[cnt].len = packet->GetDataSizeNet();
 					session->temp_packet[cnt] = packet;
 
 					++cnt;
+				}*/
+
+				CPacket* packet;
+				while(packet = session->send_q.Front())
+				{
+					if (session->send_buffer.Enqueue(packet->GetBufferPtrNet(), packet->GetDataSizeNet()))
+					{
+						CPacket* temp = nullptr;
+						while (temp == nullptr)
+						{
+							session->send_q.Dequeue(&temp); // Enqueue 때문에 실패할 수 있음
+							if (packet == temp)
+								break;
+						}
+						packet->SubRef();
+					}
+					else
+						break;
 				}
+
+				int fillSize = session->send_buffer.GetFillSize();
+				int size1 = session->send_buffer.DirectDequeSize();
+
+				WSABUF wsabuf[2];
+				ZeroMemory(wsabuf, sizeof(wsabuf));
+
+				int cnt = 1;
+				wsabuf[0].buf = session->send_buffer.GetFrontPtr();
+				wsabuf[0].len = size1;
+
+				if (size1 < fillSize)
+				{
+					++cnt;
+					wsabuf[1].buf = session->send_buffer.GetBufPtr();
+					wsabuf[1].len = fillSize - size1;
+				}
+
+
 #endif
 
-				session->send_packet_cnt = buf_cnt;
+				//session->send_packet_cnt = buf_cnt;
 				DWORD sendbytes;
 
 				SOCKET socket = session->sock;
 				session->send_sock = socket;
 
 				int temp_io = InterlockedIncrement((LONG*)&session->io_count); // 요청 발생
-				retval = WSASend(socket, wsabuf, buf_cnt, NULL, 0, &session->send_overlapped, NULL);
+				retval = WSASend(socket, wsabuf, cnt, NULL, 0, &session->send_overlapped, NULL);
 
 
 				DWORD error_code;
@@ -1047,12 +1101,17 @@ void CNetServer::Release(Session* session)
 	{
 		packet->SubRef();
 	}
-
+	/*
 	int remain = session->send_packet_cnt;
 	while (remain > 0)
 	{
 		session->temp_packet[--remain]->SubRef();
 	}
+	*/
+
+	
+
+
 #endif
 
 	SOCKET sock = session->sock;
@@ -1092,15 +1151,16 @@ void CNetServer::Show()
 	wprintf(L"Total Accept : %lld | TPS : %d | Accept Error : %d\n", m_totalAccept, tps, m_acceptErr);
 	
 	wprintf(L"Session: %d\n", m_sessionCnt);
-	wprintf(L"PacketPool Use: %d\n", CPacket::GetUsePool());
+	wprintf(L"PacketPool Alloc / Use : %lld / %d\n", CPacket::GetPacketAlloc(), CPacket::GetUsePool());
 	
 #ifdef SYNC_IO_MONITOR
 	wprintf(L"SYNC RECV / SEND : %d / %d\n", m_syncRecv, m_syncSend);
 #endif
 
-	wprintf(L"Send BPS: %d\n"
-		L"Recv BPS: %d\n",
-		sendByte, recvByte);
+	wprintf(L"Send BPS : %d\n"
+		L"Recv BPS : %d\n"
+		L"Max Send bytes per once : %lld\n",
+		sendByte, recvByte, m_maxTransferred);
 
 
 	return;

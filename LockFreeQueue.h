@@ -32,6 +32,8 @@ public:
 
 	bool Enqueue(T data);
 	bool Dequeue(T* data);
+	// 1 스레드에서만 Dequeue할 때 외에는 사용하면 안됨.
+	T Front();
 	long long GetSize();
 
 
@@ -121,7 +123,7 @@ bool LockFreeQueue<T>::Dequeue(T* data)
 	if (_size <= 0)
 		return false;
 
-	InterlockedDecrement64(&_size);
+	
 	unsigned long long old_head;
 	Node* head;
 	Node* next;
@@ -152,8 +154,7 @@ bool LockFreeQueue<T>::Dequeue(T* data)
 			//    -> 이 때 디큐 시도하는 스레드는 기다리느라 못하는 상태가 됨 (사이즈 상으로는 큐에 원소가 있지만)
 			//    이 문제는 enqueue 중인 스레드가 일을 마치면 해결이 된다.
 			//    하지만 다른 스레드 때문에 해야할 일을 못하는 것은 락프리의 목적에 위배된다.
-			//    next가 null로 읽히면 1, 2의 상황 구분하지 않고 사이즈에 상관 없이 그냥 없는 것으로 본다..
-			InterlockedIncrement64(&_size);
+			//    next가 null로 읽히면 1, 2의 상황 구분하지 않고 사이즈에 상관 없이 그냥 없는 것으로 본다..			
 			return false;
 		}
 		else
@@ -173,14 +174,27 @@ bool LockFreeQueue<T>::Dequeue(T* data)
 			// data가 객체인 경우.. 느려질 것 사용자의 문제. template type이 복사 비용이 적은 포인터나 일반 타입이었어야 한다.
 			if (InterlockedCompareExchangePointer((PVOID*)&_head, new_head, (PVOID)old_head) == (PVOID)old_head)
 			{
+				InterlockedDecrement64(&_size);
 				head->data.~T(); // 문제!! 더미 노드 하나가 삭제되지 않고 물려버림
 				_pool->Free(head);
+				
 				break;
 			}
 		}
 	}
 
 	return true;
+}
+
+template<class T>
+T LockFreeQueue<T>::Front()
+{
+	Node* head = (Node*)((unsigned long long)_head & dfADDRESS_MASK);
+	Node* next = head->next;
+	if (head == nullptr) CrashDump::Crash();
+	if (next == nullptr) return nullptr;
+
+	return head->next->data;
 }
 
 template<class T>
