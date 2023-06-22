@@ -33,9 +33,6 @@
     <ClCompile Include="PacketMaker.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="monitor.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="ProcPacket.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -110,9 +107,6 @@
     <ClInclude Include="MemoryPoolTls.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="monitor.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="NetProtocol.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -156,6 +150,9 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="CPDH.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Define.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

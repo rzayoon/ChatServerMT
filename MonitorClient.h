@@ -1,4 +1,7 @@
 #pragma once
+
+#include "CLanClient.h"
+
 class MonitorClient : public CLanClient
 {
 public:

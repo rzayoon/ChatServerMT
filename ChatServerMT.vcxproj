@@ -160,7 +160,6 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MonitorClient.cpp" />
     <ClCompile Include="PacketMaker.cpp" />
-    <ClCompile Include="monitor.cpp" />
     <ClCompile Include="ProcPacket.cpp" />
     <ClCompile Include="ProfileTls.cpp" />
     <ClCompile Include="RingBuffer.cpp" />
@@ -181,13 +180,13 @@
     <ClInclude Include="CPacket.h" />
     <ClInclude Include="CPDH.h" />
     <ClInclude Include="CrashDump.h" />
+    <ClInclude Include="Define.h" />
     <ClInclude Include="LockFreePool.h" />
     <ClInclude Include="LockFreeQueue.h" />
     <ClInclude Include="LockFreeStack.h" />
     <ClInclude Include="MonitorClient.h" />
     <ClInclude Include="PacketMaker.h" />
     <ClInclude Include="MemoryPoolTls.h" />
-    <ClInclude Include="monitor.h" />
     <ClInclude Include="NetProtocol.h" />
     <ClInclude Include="ObjectPool.h" />
     <ClInclude Include="ProcPacket.h" />

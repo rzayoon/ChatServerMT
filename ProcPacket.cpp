@@ -24,9 +24,7 @@ using std::list;
 #include "session.h"
 
 
-#include "CNetServer.h"
 #include "User.h"
-#include "CLanClient.h"
 
 #include "MonitorClient.h"
 #include "CCpuUsage.h"
@@ -41,11 +39,6 @@ using std::list;
 
 #include "CLog.h"
 
-extern ChatServer g_chatServer;
-
-
-
-
 bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 {
 	__int64 account_no;
@@ -55,18 +48,21 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 
 	Profile pro = Profile(L"Login");
 
-	int idx = user->session_id & dfUSER_MAP_HASH;
+	SS_ID sessionID = user->GetSSID();
+	int idx = sessionID & dfUSER_MAP_HASH;
 	bool ret = true;
 
 	(*packet) >> account_no;
 	(*packet).GetData((char*)id, MAX_ID_SIZE * sizeof(wchar_t));
 	(*packet).GetData((char*)nick, MAX_NICK_SIZE * sizeof(wchar_t));
-	
+	// null terminator check..?
+
+
 	char session_key[64];
 
-	(*packet).GetData((char*)session_key, 64);
+	(*packet).GetData((char*)session_key, 64); // 아직 안씀
 
-	if (user->is_login == true)
+	if (user->IsLogin())
 	{
 		// 같은 세션id에서 중복 로그인 메시지
 
@@ -82,8 +78,7 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 	}
 	if (!ret) return false;
 
-	{
-		
+	{	
 		AcquireSRWLockExclusive(&g_chatServer.m_accountMapSRW);
 		auto iter = g_chatServer.m_accountMap.find(account_no);
 
@@ -99,7 +94,7 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 		}
 		else
 		{
-			g_chatServer.m_accountMap[account_no] = user->session_id;
+			g_chatServer.m_accountMap[account_no] = sessionID;
 			ret = true;
 		}
 		ReleaseSRWLockExclusive(&g_chatServer.m_accountMapSRW);
@@ -111,14 +106,15 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 	InterlockedDecrement(&g_chatServer.m_connectCnt);
 	InterlockedIncrement(&g_chatServer.m_loginCnt);
 
-	user->is_login = true;
-	user->account_no = account_no;
-	wcscpy_s(user->id, id);
-	wcscpy_s(user->nickname, nick);
+	user->SetLogin();
+	user->SetAccountNo(account_no);
+	user->SetIDByWCS(id);
+	user->SetNicknameByWCS(nick);
+
 
 	CPacket* send_packet = CPacket::Alloc();
 
-	PacketMaker::MakeLogin(send_packet, 1, user->account_no);
+	PacketMaker::MakeLogin(send_packet, 1, account_no);
 	g_chatServer.SendMessageUni(send_packet, user);
 
 	CPacket::Free(send_packet);
@@ -137,7 +133,7 @@ bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 
 
 
-	if (account_no != user->account_no)
+	if (account_no != user->GetAccountNo())
 	{
 		// 오류
 
@@ -155,13 +151,19 @@ bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 	vector<SectorPos> lock_sector;
 	lock_sector.reserve(2);
 
+	// 이동할 곳
 	lock_sector.push_back({ static_cast<DWORD>(sector_x), static_cast<DWORD>(sector_y) });
 
-	if (user->is_in_sector && (sector_x != user->sector_x || sector_y != user->sector_y))
+	short userSectorX = user->GetSectorX();
+	short userSectorY = user->GetSectorY();
+
+	// 현재 위치. 로그인 후 첫 이동이면 skip
+	if (user->IsInSector() && (sector_x != userSectorX || sector_y != userSectorY))
 	{
-		lock_sector.push_back({ static_cast<DWORD>(user->sector_x), static_cast<DWORD>(user->sector_y) });
+		lock_sector.push_back({ static_cast<DWORD>(userSectorX), static_cast<DWORD>(userSectorY) });
 	}
 
+	// 잠금 우선 순위 반영
 	std::sort(lock_sector.begin(), lock_sector.end(),
 		[](SectorPos a, SectorPos b)
 		{
@@ -181,8 +183,7 @@ bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 
 	Sector_RemoveUser(user);
 
-	user->sector_x = sector_x;
-	user->sector_y = sector_y;
+	user->MoveSector(sector_x, sector_y);
 
 	Sector_AddUser(user);
 
@@ -196,7 +197,7 @@ bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 
 	CPacket* send_packet = CPacket::Alloc();
 
-	PacketMaker::MakeSectorMove(send_packet, user->account_no, user->sector_x, user->sector_y);
+	PacketMaker::MakeSectorMove(send_packet, account_no, user->GetSectorX(), user->GetSectorY());
 
 	g_chatServer.SendMessageUni(send_packet, user);
 
@@ -217,22 +218,25 @@ bool PacketProcessor::ProcMessage(User* user, CPacket* packet)
 
 	(*packet) >> account_no >> message_len;
 
-	if (user->account_no != account_no)
+	if (user->GetAccountNo() != account_no)
 		return false;
 
-	if ((*packet).GetDataSize() != message_len || message_len == 0)
+	if ((*packet).GetDataSize() != message_len || message_len == 0 || message_len > MAX_MESSAGE)
 		return false;
 
 	(*packet).GetData((char*)message, message_len);
-
+	message[message_len / 2] = L'\0';
+	wstring ws_message = message;
 
 	CPacket* send_packet = CPacket::Alloc();
 
-	PacketMaker::MakeMessage(send_packet, account_no, user->id, user->nickname, message_len, message);
+	PacketMaker::MakeMessage(send_packet, account_no, user->GetID(), user->GetNickname(), message_len, ws_message);
 
 	g_chatServer.SendMessageAround(send_packet, user);
 
 	CPacket::Free(send_packet);
 
 	return true;
+	
+
 }

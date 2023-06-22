@@ -5,8 +5,6 @@
 //#include "RingBuffer.h"
 //#include "LockFreeQueue.h"
 //#include "Tracer.h"
-
-#define STACK_INDEX
 //#define TRACE_SESSION
 
 #define MAX_SENDQ 200
@@ -46,9 +44,6 @@ private:
 	Session();
 	~Session();
 
-	void Lock();
-	void Unlock();
-
 	unsigned long long GetSessionID();
 
 #ifndef STACK_INDEX
@@ -58,14 +53,12 @@ private:
 	alignas(64) unsigned int session_id;
 	unsigned short session_index;
 
-	LARGE_INTEGER send_time;
 
 	OVERLAPPED recv_overlapped;
-	SOCKET recv_sock;
-	DWORD recvbytes;
+
 	OVERLAPPED send_overlapped;
-	SOCKET send_sock;
-	DWORD sendbytes;
+	int recvPacket;
+	int sendPacket;
 	RingBuffer recv_buffer = RingBuffer(2000);
 #ifdef AUTO_PACKET
 	LockFreeQueue<PacketPtr> send_q = LockFreeQueue<PacketPtr>(MAX_SENDQ, false);
@@ -82,14 +75,11 @@ private:
 	alignas(64) int pend_count; // CancelIO 타이밍 잡기
 	int disconnect;
 	alignas(64) unsigned int send_post_flag;
-	alignas(64) unsigned int send_pend_flag;
-	alignas(64) int send_packet_cnt;  // Send에 넣은 Packet 객체 삭제에 필요
+	//alignas(64) unsigned int send_pend_flag;
 	alignas(64) ULONG64 last_recv_time;
-
 
 	wchar_t ip[16];
 	unsigned short port;
-	CRITICAL_SECTION session_cs;
 
 #ifdef TRACE_SESSION
 	MiniTracer pending_tracer;
@@ -99,7 +89,7 @@ private:
 #ifdef AUTO_PACKET
 	PacketPtr temp_packet[200];
 #else
-	CPacket* temp_packet[200];
+
 #endif
 
 };

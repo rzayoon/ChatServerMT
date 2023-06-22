@@ -1,7 +1,7 @@
 
 #include <Windows.h>
 
-
+#include <cassert>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -176,19 +176,15 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 {
 	WORD packet_type;
 	(*packet) >> packet_type;
-	User* user;
-
-	ULONGLONG t = GetTickCount64();
+	User* user = nullptr;
 
 	bool result_proc = false;
-	
+
 	if (AcquireUser(session_id, &user))
 	{
-		long long acc = user->account_no;
+		__int64 accNo = user->GetAccountNo();
 
-		user->old_recv_time = user->last_recv_time;
-		user->last_recv_time = GetTickCount64();
-
+		user->UpdateRecvTime();
 
 		// Packet Proc
 		switch (packet_type)
@@ -317,10 +313,7 @@ void ChatServer::CreateUser(SS_ID s_id)
 
 	user->Lock();
 
-	user->session_id = s_id;
-	user->sector_x = -1;
-	user->sector_y = -1;
-	user->last_recv_time = GetTickCount64();
+	user->InitUser(s_id);
 
 #ifdef dfTRACE_CHAT
 	m_chatTracer.trace(1, (PVOID)user->session_id, GetTickCount64());
@@ -359,52 +352,42 @@ void ChatServer::DeleteUser(SS_ID s_id)
 	ReleaseSRWLockExclusive(&m_userMapCS[idx]);
 
 	
-	if (user->session_id != s_id)
-	{
-		CrashDump::Crash();
-	}
+	assert(user->GetSSID() == s_id);
+	short sectorY = user->GetSectorY();
+	short sectorX = user->GetSectorX();
 
-	if (user->is_in_sector)
+
+	if (user->IsInSector())
 	{
-		AcquireSRWLockExclusive(&g_SectorLock[user->sector_y][user->sector_x]);
+		AcquireSRWLockExclusive(&g_SectorLock[sectorY][sectorX]);
 		Sector_RemoveUser(user);
-		ReleaseSRWLockExclusive(&g_SectorLock[user->sector_y][user->sector_x]);
-		user->is_in_sector = false;
+		ReleaseSRWLockExclusive(&g_SectorLock[sectorY][sectorX]);
+		user->ResetInSector();
 	}
 
-	user->sector_x = SECTOR_MAX_X;
-	user->sector_y = SECTOR_MAX_Y;
+
 	
 	user->Unlock();
 
-	if (user->is_login) {
+	if (user->IsLogin()) {
 		AcquireSRWLockExclusive(&m_accountMapSRW);
-		m_accountMap.erase(user->account_no);
+		m_accountMap.erase(user->GetAccountNo());
 		ReleaseSRWLockExclusive(&m_accountMapSRW);
 
 		InterlockedDecrement(&m_loginCnt);
-		user->is_login = false;
+		user->ResetLogin();
 	}
 	else
 		InterlockedDecrement(&m_connectCnt);
 
-	user->session_id = -1;
-	user->account_no = -1;
-
-	
-
 	m_userPool.Free(user);
 
 	return;
-
 }
 
 void ChatServer::SendMessageUni(CPacket* packet, User* user)
 {
-	// user lock?
-	// user delete 로직 탈 수 있다.. 
-
-	SendPacket(user->session_id, packet);
+	SendPacket(user->GetSSID(), packet);
 
 	return;
 }
@@ -433,8 +416,7 @@ void ChatServer::SendMessageAround(CPacket* packet, User* user)
 	SectorAround sect_around;
 	int cnt;
 
-
-	GetSectorAround(user->sector_x, user->sector_y, &sect_around);
+	GetSectorAround(user->GetSectorX(), user->GetSectorY(), &sect_around);
 
 	LockSectorAround(&sect_around);
 

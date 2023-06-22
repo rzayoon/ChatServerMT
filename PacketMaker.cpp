@@ -2,8 +2,9 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-
+#include <string>
 #include <list>
+using std::wstring;
 using std::list;
 
 #include "LockFreeQueue.h"
@@ -37,18 +38,24 @@ void PacketMaker::MakeSectorMove(CPacket* packet, __int64 account_no, WORD secto
 }
 
 
-void PacketMaker::MakeMessage(CPacket* packet, __int64 account_no, WCHAR* id, WCHAR* nickname,
-	WORD message_len, WCHAR* message)
+void PacketMaker::MakeMessage(CPacket* const packet, __int64 account_no, const wstring& id, const wstring& nickname,
+	const WORD message_len, const wstring& message)
 {
-	WORD type = en_PACKET_CS_CHAT_RES_MESSAGE;
+	unsigned __int16 type = en_PACKET_CS_CHAT_RES_MESSAGE;
 
 	(*packet) << type << account_no;
 
-	(*packet).PutData((char*)id, MAX_ID_SIZE * sizeof(WCHAR));
-	(*packet).PutData((char*)nickname, MAX_NICK_SIZE * sizeof(WCHAR));
+	wchar_t temp_id[MAX_ID_SIZE];
+	wcscpy_s(temp_id, id.c_str());
+
+	wchar_t temp_nickname[MAX_NICK_SIZE];
+	wcscpy_s(temp_nickname, nickname.c_str());
+
+	(*packet).PutData((char*)temp_id, MAX_ID_SIZE * sizeof(wchar_t));
+	(*packet).PutData((char*)temp_nickname, MAX_NICK_SIZE * sizeof(wchar_t));
 
 	(*packet) << message_len;
-	(*packet).PutData((char*)message, message_len);
+	(*packet).PutData((char*)message.c_str(), message_len);
 
 	(*packet).Encode();
 

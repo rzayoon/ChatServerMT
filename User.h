@@ -1,58 +1,123 @@
 #pragma once
+#include "Define.h"
+
 #include <Windows.h>
 
-using SS_ID = unsigned long long;
+#include <list>
+#include <string>
 
 
-#define MAX_ID_SIZE 20
-#define MAX_NICK_SIZE 20
-#define MAX_SESSION_KEY_SIZE 64
 
 
 class User
 {
+
+
 public:
 	User();
 	virtual ~User();
 
-	unsigned long long GetLastRecvTime()
+	unsigned long long GetLastRecvTime() const
 	{
-		return last_recv_time;
+		return m_lastRecvTime;
 	}
 
-	void Lock()
+	void Lock();
+	void Unlock();
+
+	void InitUser(SS_ID SSID)
 	{
-		EnterCriticalSection(&cs);
-		return;
+		SetSSID(SSID);
+		m_sectorX = -1;
+		m_sectorY = -1;
+		UpdateRecvTime();
+		ResetLogin();
+		ResetInSector();
 	}
 
-	void Unlock()
+
+	void SetLogin() { mb_login = true; }
+	void ResetLogin() { mb_login = false; }
+	bool IsLogin() { return mb_login; } const 
+	void SetInSector() { mb_inSector = true; }
+	void ResetInSector() { mb_inSector = false; }
+	bool IsInSector() { return mb_inSector; } const
+
+	void SetSSID(SS_ID SSID) { m_SSID = SSID; }
+	SS_ID GetSSID() { return m_SSID; } const
+
+	__int64 GetAccountNo() { return m_accountNo; } const
+	void SetAccountNo(__int64 accountNo) { m_accountNo = accountNo; }
+
+	void MoveSector(short sectorX, short sectorY);
+	void GetSector(short* const sectorX, short* const sectorY) const
 	{
-		LeaveCriticalSection(&cs);
-		return;
+		*sectorX = m_sectorX; *sectorY = m_sectorY;
+	}
+
+	void SetSectorIter(const std::list<User*>::iterator& iter)
+	{
+		m_sectorIter = iter;
+	}
+
+	short GetSectorX() { return m_sectorX; } const
+	short GetSectorY() { return m_sectorY; } const
+
+	std::list<User*>::iterator GetSectorIter() const
+	{
+		return m_sectorIter;
+	}
+
+	void UpdateRecvTime()
+	{
+		m_oldRecvTime = m_lastRecvTime;
+		m_lastRecvTime = GetTickCount64();
+	}
+
+	void SetIDByWCS(const wchar_t* const id)
+	{
+		m_ID = id;
+	}
+
+	const std::wstring& GetID() const
+	{
+		return m_ID;
+	}
+
+	void SetNicknameByWCS(const wchar_t* const nick)
+	{
+		m_nickname = nick;
+	}
+
+	const std::wstring& GetNickname() const
+	{
+		return m_nickname;
+	}
+
+	void SetSessionKeyByWCS(const wchar_t* const sessionKey)
+	{
+		m_sessionKey = sessionKey;
 	}
 
 
-	bool is_login;
-	bool is_in_sector;
+private:
+	bool mb_login;
+	bool mb_inSector;
 
-	SS_ID session_id;
-	__int64 account_no;
-	wchar_t id[MAX_ID_SIZE];
-	wchar_t nickname[MAX_NICK_SIZE];
-	char session_key[MAX_SESSION_KEY_SIZE];
+	SS_ID m_SSID;
+	__int64 m_accountNo;
+	std::wstring m_ID;
+	std::wstring m_nickname;
+	std::wstring m_sessionKey;
 
-	short sector_x;
-	short sector_y;
+	short m_sectorX;
+	short m_sectorY;
 	
-	list<User*>::iterator sector_iter;
+	std::list<User*>::iterator m_sectorIter;
 
-	unsigned long long last_recv_time;
-	unsigned long long old_recv_time;
+	unsigned long long m_lastRecvTime;
+	unsigned long long m_oldRecvTime;
 
-	CRITICAL_SECTION cs;
-
-
+	CRITICAL_SECTION m_CS;
 
 };
-

@@ -17,22 +17,22 @@ void Sector_AddUser(User* user)
 {
 	Profile pro(L"AddUser");
 
-	if (user->is_in_sector)
+	if (user->IsInSector())
 		CrashDump::Crash();
 
-	unsigned short sector_y(user->sector_y), sector_x(user->sector_x);
+	short sector_y(user->GetSectorY()), sector_x(user->GetSectorX());
 	list<User*>& sector = g_SectorList[sector_y][sector_x];
 
 #ifdef REMEMBER_ITER
-	user->sector_iter = sector.insert(sector.end(), user);
+	user->SetSectorIter( sector.insert(sector.end(), user) );
 #else
 	sector.push_back(user);
 #endif
 
-	__int64 acc_no = user->account_no;
+	__int64 acc_no = user->GetAccountNo();
 	//g_SecTracer.trace(enSECTORADD, acc_no, sector_y, sector_x);
 
-	user->is_in_sector = true;
+	user->SetInSector();
 
 	return;
 }
@@ -41,15 +41,15 @@ void Sector_RemoveUser(User* user)
 {
 	Profile pro(L"RemoveUser");
 
-	if (!user->is_in_sector)
+	if (!user->IsInSector())
 		return;
 
-	int sector_y = user->sector_y;
-	int sector_x = user->sector_x;
+	int sector_y = user->GetSectorY();
+	int sector_x = user->GetSectorX();
 
 	list<User*>& sector = g_SectorList[sector_y][sector_x];
 #ifdef REMEMBER_ITER
-	sector.erase(user->sector_iter);
+	sector.erase(user->GetSectorIter());
 #else
 	auto iter_end = sector.end();
 
@@ -64,7 +64,7 @@ void Sector_RemoveUser(User* user)
 #endif
 	//g_SecTracer.trace(enSECTORDEL, acc_no, sector_y, sector_x);
 
-	user->is_in_sector = false;
+	user->ResetInSector();
 
 	return;
 }

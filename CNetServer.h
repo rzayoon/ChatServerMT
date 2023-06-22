@@ -20,42 +20,28 @@
 /// GetSessionCount(), Show()
 /// 
 /// </summary>
-/// 
+
+class CPacket;
+class Session;
+class Tracer;
+template <class T>
+class LockFreeStack;
+
+
 class CNetServer
 {
-	enum {
-		ID_MASK = 0xFFFFFFFF,	
-		INDEX_BIT_SHIFT = 32,
-		MAX_WSABUF = 2
-	};
 
-	enum {
-		enSEND_PEND = 1,
-		enRELEASE_PEND = 2,
-		enCANCEL_IO = 3
+	enum class ePost {
+		SEND_PEND = 1,
+		RELEASE_PEND = 2,
+		CANCEL_IO = 3
 	};
 
 public:
 
-	CNetServer()
-	{
-		m_isRunning = false;
-		ZeroMemory(m_ip, sizeof(m_ip));
+	CNetServer();
 
-		WSADATA wsa;
-		if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
-		{
-			CrashDump::Crash();
-		}
-	}
-
-	~CNetServer()
-	{
-		if(m_isRunning)
-			Stop();
-
-		WSACleanup();
-	}
+	~CNetServer();
 
 	/// <summary>
 	/// 서버 초기화 및 동작
@@ -156,11 +142,9 @@ public:
 	/// </summary>
 	void Show();
 
-
 	int GetSessionCount() { return m_sessionCnt; }
 
 private:
-
 
 	HANDLE m_hcp;
 	HANDLE m_hAcceptThread;
@@ -184,34 +168,32 @@ private:
 	unsigned short m_port;
 	wchar_t m_ip[16];
 
-	static unsigned long _stdcall AcceptThread(void* param);
-	static unsigned long _stdcall IoThread(void* param);
-	static unsigned long _stdcall TimeoutThread(void* param);
+	static unsigned long _stdcall acceptThread(void* param);
+	static unsigned long _stdcall ioThread(void* param);
+	static unsigned long _stdcall timeoutThread(void* param);
 
-	void RunAcceptThread();
-	void RunIoThread();
-	void RunTimeoutThread();
+	void runAcceptThread();
+	void runIoThread();
+	void runTimeoutThread();
 
-	bool RecvPost(Session* session);
-	void SendPost(Session* session);
+	bool recvPost(Session* session);
+	void sendPost(Session* session);
 
-	void SendPend(Session* session);
+	void sendPend(Session* session);
+
+	void trySend(Session* session);
 	
-	void Disconnect(Session* session);
-	int UpdateIOCount(Session* session);
-	void UpdatePendCount(Session* session);
-	void CancelIOSession(Session* session);
-	void ReleasePend(Session* session);
-	void Release(Session* session);
+	void disconnect(Session* session);
+	int updateIOCount(Session* session);
+	void releasePend(Session* session);
+	void release(Session* session);
 
 	bool m_isRunning;
 
-#ifdef STACK_INDEX
-	LockFreeStack<unsigned short> empty_session_stack;
-#endif
+	LockFreeStack<unsigned short>* m_emptySessionStack;
 
 	Session* m_sessionArr;
-	unsigned int m_sess_id = 1;
+	unsigned int m_sessID = 1;
 
 
 #ifdef TRACE_SERVER
@@ -224,7 +206,11 @@ private:
 	alignas(64) long m_syncSend = 0;
 	alignas(64) long m_recvByte = 0;
 	alignas(64) long m_sendByte = 0;
+	alignas(64) long m_sendPacket = 0;
+	alignas(64) long m_recvPacket = 0;
 	alignas(64) unsigned long long m_maxTransferred = 0;
+	alignas(64) LONG m_semiTimeOut = 0;
+	alignas(64) LONG m_AbortedByLocal = 0;
 	unsigned long long m_preAccept = 0;
 	int m_acceptErr = 0;
 

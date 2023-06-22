@@ -2,11 +2,12 @@
 //#include "MonitorClient.h"
 //#include "CCpuUsage.h"
 //#include "CPDH.h"
-
+#include "CNetServer.h"
 
 #define dfUSER_MAP_HASH 1
 
 //#define dfTRACE_CHAT
+
 
 class ChatServer : public CNetServer
 {

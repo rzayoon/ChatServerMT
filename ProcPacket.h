@@ -1,5 +1,7 @@
 #pragma once
 
+class User;
+class CPacket;
 
 class PacketProcessor
 {

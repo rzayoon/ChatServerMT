@@ -1,6 +1,6 @@
 #pragma once
 
-#define MAX_MESSAGE 128
+
 
 enum en_PACKET_TYPE
 {
