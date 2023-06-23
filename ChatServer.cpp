@@ -452,6 +452,8 @@ void ChatServer::Show()
 		L"User : %d\n",
 		m_connectCnt, m_loginCnt, m_duplicateLogin, m_collectMsgTPS, user_cnt);
 
+	m_pdh.Show();
+
 	m_CpuTime.Show();
 }
 

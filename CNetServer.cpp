@@ -268,8 +268,12 @@ void CNetServer::runAcceptThread()
 	setsockopt(listenSock, SOL_SOCKET, SO_SNDBUF, (char*)&sendBufSize, sizeof(sendBufSize));
 #endif
 
+	/*int recvBufSize = 0;
+	setsockopt(listenSock, SOL_SOCKET, SO_RCVBUF, (char*)&recvBufSize, sizeof(recvBufSize));*/
+
 	// nagle 알고리즘 파서에서 적용
 	setsockopt(listenSock, IPPROTO_TCP, TCP_NODELAY, (char*)&m_nagle, sizeof(m_nagle));
+
 
 	// RST 
 	LINGER linger;
@@ -883,6 +887,7 @@ void CNetServer::sendPost(Session* session)
 				WSABUF wsabuf[2];
 				ZeroMemory(wsabuf, sizeof(wsabuf));
 
+				// Send Queue에서 뽑은거 전부 보내야함
 				int cnt = 1;
 				wsabuf[0].buf = session->send_buffer.GetFrontPtr();
 				wsabuf[0].len = size1;
@@ -901,7 +906,7 @@ void CNetServer::sendPost(Session* session)
 				SOCKET socket = session->sock;
 
 				int temp_io = InterlockedIncrement((LONG*)&session->io_count); // 요청 발생
-				retval = WSASend(socket, wsabuf, cnt, NULL, 0, &session->send_overlapped, NULL);
+				retval = WSASend(socket, wsabuf, cnt, nullptr, 0, &session->send_overlapped, nullptr);
 
 
 				DWORD error_code;
@@ -1062,8 +1067,8 @@ void CNetServer::Show()
 	wprintf(L"SYNC RECV / SEND : %d / %d\n", m_syncRecv, m_syncSend);
 #endif
 
-	wprintf(L"Send kBytes Per Sec : %d kB\n"
-		L"Recv kBytes Per Sec : %d kB\n"
+	wprintf(L"Send KBytes Per Sec : %d KB\n"
+		L"Recv KBytes Per Sec : %d KB\n"
 		L"SendPacket Per Sec : %d\n"
 		L"RecvPacket Per Sec : %d\n",
 		sendByte >> 10, recvByte >> 10, sendPacket, recvPacket);

@@ -4,8 +4,10 @@
 //#include "CPacket.h"
 #include "RingBuffer.h"
 #include "LockFreeQueue.h"
-//#include "Tracer.h"
-//#define TRACE_SESSION
+#include "Tracer.h"
+
+
+#define TRACE_SESSION
 
 #define MAX_SENDQ 200
 
@@ -73,8 +75,8 @@ private:
 	LockFreeQueue<CPacket*> send_q = LockFreeQueue<CPacket*>(MAX_SENDQ, false);
 #endif
 
-	RingBuffer send_buffer = RingBuffer(2047);
-	RingBuffer recv_buffer = RingBuffer(2047);
+	RingBuffer send_buffer = RingBuffer(4000);
+	RingBuffer recv_buffer = RingBuffer(2000);
 
 
 	wchar_t ip[16];

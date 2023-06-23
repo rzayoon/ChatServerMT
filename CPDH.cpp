@@ -145,9 +145,9 @@ void CPDH::Collect()
 
 void CPDH::Show()
 {
-	wprintf(L"Private Bytes : %d\n", _privateBytes);
-	wprintf(L"Process Non Paged : %d\n", _processNonPaged);
-	wprintf(L"Total Non Paged : %d\n", _totalNonPaged);
+	wprintf(L"Private MBytes : %d MB\n", _privateBytes >> 20);
+	wprintf(L"Process Non Paged : %d KB\n", _processNonPaged >> 10);
+	wprintf(L"Total Non Paged : %d MB\n", _totalNonPaged >> 20);
 	wprintf(L"Available MBytes : %d\n", _availMB);
 
 	wprintf(L"Network RecvBytes : %llf\n", _pdh_value_Network_RecvBytes);
