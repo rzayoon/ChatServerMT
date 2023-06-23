@@ -36,7 +36,6 @@ using std::list;
 #include "Sector.h"
 #include "CommonProtocol.h"
 #include "ProfileTls.h"
-
 #include "CLog.h"
 
 bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
@@ -70,7 +69,7 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 		
 		PacketMaker::MakeLogin(send_packet, 0, account_no);
 
-		g_chatServer.SendMessageUni(send_packet, user);
+		m_server->SendMessageUni(send_packet, user);
 
 		CPacket::Free(send_packet);
 		
@@ -79,32 +78,32 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 	if (!ret) return false;
 
 	{	
-		AcquireSRWLockExclusive(&g_chatServer.m_accountMapSRW);
-		auto iter = g_chatServer.m_accountMap.find(account_no);
+		AcquireSRWLockExclusive(&m_server->m_accountMapSRW);
+		auto iter = m_server->m_accountMap.find(account_no);
 
-		if (iter != g_chatServer.m_accountMap.end())
+		if (iter != m_server->m_accountMap.end())
 		{
 			// 중복
-			InterlockedIncrement(&g_chatServer.m_duplicateLogin);
+			InterlockedIncrement(&m_server->m_duplicateLogin);
 			CrashDump::Crash();
 			// 임계영역에서 로그 남기는거 지양해야함
 			Log(L"Chat", enLOG_LEVEL_ERROR, L"Duplicated Login [%lld]", account_no);
-			g_chatServer.DisconnectSession(iter->second);
+			m_server->DisconnectSession(iter->second);
 			ret = false;
 		}
 		else
 		{
-			g_chatServer.m_accountMap[account_no] = sessionID;
+			m_server->m_accountMap[account_no] = sessionID;
 			ret = true;
 		}
-		ReleaseSRWLockExclusive(&g_chatServer.m_accountMapSRW);
+		ReleaseSRWLockExclusive(&m_server->m_accountMapSRW);
 
 
 		if (!ret) return false;
 
 	}
-	InterlockedDecrement(&g_chatServer.m_connectCnt);
-	InterlockedIncrement(&g_chatServer.m_loginCnt);
+	InterlockedDecrement(&m_server->m_connectCnt);
+	InterlockedIncrement(&m_server->m_loginCnt);
 
 	user->SetLogin();
 	user->SetAccountNo(account_no);
@@ -115,7 +114,7 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 	CPacket* send_packet = CPacket::Alloc();
 
 	PacketMaker::MakeLogin(send_packet, 1, account_no);
-	g_chatServer.SendMessageUni(send_packet, user);
+	m_server->SendMessageUni(send_packet, user);
 
 	CPacket::Free(send_packet);
 
@@ -199,7 +198,7 @@ bool PacketProcessor::ProcSectorMove(User* user, CPacket* packet)
 
 	PacketMaker::MakeSectorMove(send_packet, account_no, user->GetSectorX(), user->GetSectorY());
 
-	g_chatServer.SendMessageUni(send_packet, user);
+	m_server->SendMessageUni(send_packet, user);
 
 	CPacket::Free(send_packet);
 
@@ -232,7 +231,7 @@ bool PacketProcessor::ProcMessage(User* user, CPacket* packet)
 
 	PacketMaker::MakeMessage(send_packet, account_no, user->GetID(), user->GetNickname(), message_len, ws_message);
 
-	g_chatServer.SendMessageAround(send_packet, user);
+	m_server->SendMessageAround(send_packet, user);
 
 	CPacket::Free(send_packet);
 

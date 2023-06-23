@@ -56,7 +56,9 @@ int main()
 	timeBeginPeriod(1);
 	SYSLOG_Init(L"Log", enLOG_LEVEL_DEBUG);
 	
-	g_chatServer.Start();
+	ChatServer* server = new ChatServer;
+
+	server->Start();
 
 	DWORD oldTick = timeGetTime();
 	while (1)
@@ -69,7 +71,7 @@ int main()
 			if (input == L'q' || input == L'Q')
 			{
 
-				g_chatServer.Stop();
+				server->Stop();
 
 				break;
 			}
@@ -81,10 +83,10 @@ int main()
 		/*if(!g_chatServer.IsConnectedMonitor())
 			g_chatServer.ConnectMonitor();*/
 
-		g_chatServer.Collect();
+		server->Collect();
 		/*if(g_chatServer.IsConnectedMonitor())
 			g_chatServer.SendMonitor(time(NULL));*/
-		g_chatServer.Show();
+		server->Show();
 		
 	}
 

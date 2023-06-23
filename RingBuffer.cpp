@@ -1,11 +1,19 @@
-#include <string.h>
 #include "RingBuffer.h"
+
+#include "BufferAllocator.h"
+
+#include <string.h>
+
+
+BufferAllocator* RingBuffer::m_ba = new BufferAllocator;
 
 RingBuffer::RingBuffer(int _bufSize)
 {
 
+
+
 	bufSize = _bufSize + 1;
-	buf = new char[bufSize];
+	buf = m_ba->Alloc(bufSize);
 	fillSize = 0;
 	front = 0;
 	rear = 0;
@@ -14,7 +22,7 @@ RingBuffer::RingBuffer(int _bufSize)
 
 RingBuffer::~RingBuffer()
 {
-	delete[] buf;
+	m_ba->Free(buf);
 }
 
 void RingBuffer::Lock()

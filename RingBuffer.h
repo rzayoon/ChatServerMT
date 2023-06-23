@@ -1,6 +1,9 @@
 #pragma once
 #include <Windows.h>
 
+class BufferAllocator;
+
+
 class RingBuffer
 {
 public:
@@ -92,6 +95,8 @@ public:
 	bool IsEmpty();
 
 private:
+
+	static BufferAllocator* m_ba;
 
 	// 읽기 전용
 	char* buf;

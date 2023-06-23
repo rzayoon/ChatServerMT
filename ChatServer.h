@@ -3,11 +3,20 @@
 //#include "CCpuUsage.h"
 //#include "CPDH.h"
 #include "CNetServer.h"
+#include "Define.h"
+#include "MemoryPoolTls.h"
+
+
+#include <unordered_map>
+#include <Windows.h>
 
 #define dfUSER_MAP_HASH 1
 
 //#define dfTRACE_CHAT
 
+class User;
+class CPacket;
+class PacketProcessor;
 
 class ChatServer : public CNetServer
 {
@@ -50,11 +59,14 @@ private:
 
 	MemoryPoolTls<User> m_userPool;
 
-	unordered_map<SS_ID, User*> m_userMap[dfUSER_MAP_HASH];
+	std::unordered_map<SS_ID, User*> m_userMap[dfUSER_MAP_HASH];
 	SRWLOCK m_userMapCS[dfUSER_MAP_HASH];
 	
-	unordered_map<long long, SS_ID> m_accountMap;
+	std::unordered_map<long long, SS_ID> m_accountMap;
 	SRWLOCK m_accountMapSRW;
+
+	PacketProcessor* m_packetProc;
+
 
 private:
 
@@ -99,7 +111,3 @@ public:
 	void SendMonitor(int time_stamp);
 
 };
-
-//DWORD TimeOutThread(PVOID param);
-
-extern ChatServer g_chatServer;

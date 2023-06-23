@@ -45,7 +45,7 @@ using std::list;
 #include "TextParser.h"
 #include "CLog.h"
 
-ChatServer g_chatServer;
+
 
 
 ChatServer::ChatServer()
@@ -77,6 +77,8 @@ bool ChatServer::Start()
 
 	m_pdh.Init();
 
+	m_packetProc = new PacketProcessor;
+	m_packetProc->SetServer(this);
 
 	char ip[16];
 	int port;
@@ -194,7 +196,7 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 #ifdef dfTRACE_CHAT
 			m_chatTracer.trace(10, (PVOID)user->session_id, GetTickCount64());
 #endif
-			result_proc = PacketProcessor::ProcLogin(user, packet);
+			result_proc = m_packetProc->ProcLogin(user, packet);
 			break;
 		}
 		case en_PACKET_CS_CHAT_REQ_SECTOR_MOVE:
@@ -202,7 +204,7 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 #ifdef dfTRACE_CHAT
 			m_chatTracer.trace(11, (PVOID)user->session_id, GetTickCount64());
 #endif
-			result_proc = PacketProcessor::ProcSectorMove(user, packet);
+			result_proc = m_packetProc->ProcSectorMove(user, packet);
 			break;
 		}
 		case en_PACKET_CS_CHAT_REQ_MESSAGE:
@@ -210,7 +212,7 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 #ifdef dfTRACE_CHAT
 			m_chatTracer.trace(12, (PVOID)user->session_id, GetTickCount64());
 #endif
-			result_proc = PacketProcessor::ProcMessage(user, packet);
+			result_proc = m_packetProc->ProcMessage(user, packet);
 			break;
 		}
 		case en_PACKET_CS_CHAT_REQ_HEARTBEAT:

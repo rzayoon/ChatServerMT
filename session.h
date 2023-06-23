@@ -2,13 +2,14 @@
 //#include <Windows.h>
 //
 //#include "CPacket.h"
-//#include "RingBuffer.h"
-//#include "LockFreeQueue.h"
+#include "RingBuffer.h"
+#include "LockFreeQueue.h"
 //#include "Tracer.h"
 //#define TRACE_SESSION
 
 #define MAX_SENDQ 200
 
+class CPacket;
 
 #ifdef TRACE_SESSION
 enum
@@ -46,37 +47,35 @@ private:
 
 	unsigned long long GetSessionID();
 
-#ifndef STACK_INDEX
-	bool used;
-#endif
-
-	alignas(64) unsigned int session_id;
+	// 읽는 값
+	SOCKET sock;
+	alignas(8) unsigned int session_id;
 	unsigned short session_index;
+	
+	// recv 스레드 사용
+	alignas(64) int recvPacket;
+	unsigned __int64 last_recv_time;
+	// send 스레드 사용
+	alignas(64) int sendPacket;
 
-
+	// interlock
+	alignas(64) int io_count; //(session ref count) 경계에만 세우고 뒤에 다른 변수 들어올 수 있음.
+	unsigned int release_flag;
+	alignas(64) unsigned int disconnect;
+	alignas(64) unsigned int send_post_flag;
+	//alignas(64) unsigned int send_pend_flag;
+	alignas(64) // 격리
 	OVERLAPPED recv_overlapped;
-
 	OVERLAPPED send_overlapped;
-	int recvPacket;
-	int sendPacket;
-	RingBuffer recv_buffer = RingBuffer(2000);
 #ifdef AUTO_PACKET
 	LockFreeQueue<PacketPtr> send_q = LockFreeQueue<PacketPtr>(MAX_SENDQ, false);
 #else
 	LockFreeQueue<CPacket*> send_q = LockFreeQueue<CPacket*>(MAX_SENDQ, false);
 #endif
 
-	RingBuffer send_buffer = RingBuffer(4000);
+	RingBuffer send_buffer = RingBuffer(2047);
+	RingBuffer recv_buffer = RingBuffer(2047);
 
-	// interlock
-	alignas(64) SOCKET sock;
-	alignas(64) int io_count; //(session ref count) 경계에만 세우고 뒤에 다른 변수 들어올 수 있음.
-	int release_flag;
-	alignas(64) int pend_count; // CancelIO 타이밍 잡기
-	int disconnect;
-	alignas(64) unsigned int send_post_flag;
-	//alignas(64) unsigned int send_pend_flag;
-	alignas(64) ULONG64 last_recv_time;
 
 	wchar_t ip[16];
 	unsigned short port;
