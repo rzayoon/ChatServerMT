@@ -27,46 +27,33 @@ class CLanClient
 		MAX_WSABUF = 30
 	};
 
+	enum class ePost {
+		SEND_PEND = 1,
+		RELEASE_PEND = 2,
+		CANCEL_IO = 3
+	};
+
+
 public:
 
-	CLanClient()
-	{
-		m_isConnected = false;
-		ZeroMemory(m_serverIp, sizeof(m_serverIp));
-		
-		m_isInit = false;
-		m_serverSock = 0;
-		m_disconnect = true;
-		m_ioCount = 0;
-		m_sendFlag = false;
-		m_sentPacketCnt = 0;
-	}
+	CLanClient();
 
-	~CLanClient()
-	{
-
-	}
+	virtual ~CLanClient();
 
 	bool Connect(
 		const wchar_t* ip, unsigned short port, 
 		int iocp_worker, int iocp_active, bool nagle);
 
 	void Disconnect();
-
-
-
 	bool SendPacket(CPacket* packet);
-
 	void Show();
 
 	virtual void OnRecv(CPacket* packet) = 0;
-
-
 	virtual void OnEnterServerJoin() = 0;
 
 	/// <summary>
 	/// 연결 끊어진 Session Id 전달.
-	/// Release는 아직 안되었을 수 있음
+	/// 
 	/// </summary>
 	/// <param name="session_id"></param>
 	virtual void OnLeaveServer() = 0;
@@ -100,7 +87,7 @@ protected:
 private:
 
 	bool m_isInit;
-	void ReleaseClient(void);
+	void releaseClient(void);
 
 	HANDLE m_hcp;
 	HANDLE* m_hWorkerThread;
@@ -117,20 +104,23 @@ private:
 	unsigned short m_serverPort;
 	wchar_t m_serverIp[16];
 
-	static unsigned long _stdcall IoThread(void* param);
+	static unsigned long _stdcall ioThread(void* param);
 
-	void RunIoThread();
+	void runIoThread();
 
-	bool RecvPost();
-	void SendPost();
+	bool recvPost();
+	void sendPost();
+	void sendPend();
 
-	bool ConnectSession();
-	void DisconnectSession();
-	int UpdateIOCount();
-	void UpdatePendCount();
-	void CancelIOPend();
-	void Release();
-	void Leave();
+	void trySend();
+
+	bool connectSession();
+	void disconnectSession();
+
+	int updateIOCount();
+
+	void releasePend();
+	void release();
 
 
 	SOCKET m_serverSock;
@@ -146,9 +136,7 @@ private:
 
 	alignas(64) int m_ioCount;
 	int m_releaseFlag;
-	alignas(64) int m_pendCount; // CancelIO 타이밍 잡기
-	int m_disconnect;
-	alignas(64) int m_leaveFlag;
+	alignas(64) int m_disconnect;
 	alignas(64) int m_sendFlag;
 	alignas(64) int m_sentPacketCnt;  // Send에 넣은 Packet 객체 삭제에 필요
 	alignas(64) char _b;

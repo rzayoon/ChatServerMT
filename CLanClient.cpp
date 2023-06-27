@@ -29,6 +29,25 @@
 
 
 
+CLanClient::CLanClient()
+{
+	m_isConnected = false;
+	ZeroMemory(m_serverIp, sizeof(m_serverIp));
+
+	m_isInit = false;
+	m_serverSock = 0;
+	m_disconnect = true;
+	m_ioCount = 0;
+	m_sendFlag = false;
+	m_sentPacketCnt = 0;
+
+}
+
+CLanClient::~CLanClient()
+{
+
+}
+
 bool CLanClient::Connect(const wchar_t* serverIp, unsigned short port,
 	int iocpWorker, int iocpActive, bool nagle)
 {
@@ -79,7 +98,7 @@ bool CLanClient::Connect(const wchar_t* serverIp, unsigned short port,
 
 		for (int i = 0; i < m_iocpWorkerNum; i++)
 		{
-			m_hWorkerThread[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)IoThread, this, CREATE_SUSPENDED, NULL);
+			m_hWorkerThread[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ioThread, this, CREATE_SUSPENDED, NULL);
 			if (m_hWorkerThread[i] == NULL)
 			{
 				Log(L"ERR", enLOG_LEVEL_ERROR, L"Create Thread");
@@ -121,7 +140,7 @@ bool CLanClient::Connect(const wchar_t* serverIp, unsigned short port,
 #endif
 
 
-		ret = ConnectSession();
+		ret = connectSession();
 		m_isConnected = true;
 	}
 
@@ -130,7 +149,7 @@ bool CLanClient::Connect(const wchar_t* serverIp, unsigned short port,
 	{
 		// 정리
 		wprintf(L"connect failed\n");
-		ReleaseClient();
+		releaseClient();
 
 	}
 
@@ -147,10 +166,9 @@ void CLanClient::Disconnect()
 
 	
 
-	DisconnectSession();
+	disconnectSession();
 
-	ReleaseClient();
-	
+	releaseClient(); // 스레드 정리 & 대기
 
 	wprintf(L"Disconnected\n");
 
@@ -159,7 +177,7 @@ void CLanClient::Disconnect()
 
 
 
-void CLanClient::ReleaseClient(void)
+void CLanClient::releaseClient(void)
 {
 
 	// session 연결 끊기
@@ -174,16 +192,16 @@ void CLanClient::ReleaseClient(void)
 	return;
 }
 
-unsigned long _stdcall CLanClient::IoThread(void* param)
+unsigned long _stdcall CLanClient::ioThread(void* param)
 {
 	CLanClient* client = (CLanClient*)param;
 	wprintf(L"%d worker thread On...\n", GetCurrentThreadId());
-	client->RunIoThread();
+	client->runIoThread();
 	wprintf(L"%d IO thread end\n", GetCurrentThreadId());
 	return 0;
 }
 
-void CLanClient::RunIoThread()
+void CLanClient::runIoThread()
 {
 	int ret_gqcp;
 	DWORD thread_id = GetCurrentThreadId();
@@ -228,19 +246,31 @@ void CLanClient::RunIoThread()
 
 
 
-		if (cbTransferred == 0 || m_disconnect) // Pending 후 I/O 처리 실패
+		if (cbTransferred == 0 || m_disconnect) // Pending 후 I/O 처리 실패 또는 PostQueue
 		{
 #
-			if ((unsigned long long)overlapped == 1)
+			switch(reinterpret_cast<unsigned short>(overlapped))
 			{
-				m_sendFlag = false;
-
-				SendPost();
-
-			}
-			else if (&m_recvOverlapped == overlapped && !m_leaveFlag)
-			{
-				Leave();
+				case static_cast<unsigned short>(ePost::SEND_PEND):
+				{
+					trySend();
+					break;
+				}
+				case static_cast<unsigned short>(ePost::RELEASE_PEND): // Release 비동기 요청 처리
+				{
+					release();
+					break;
+				}
+				case static_cast<unsigned short>(ePost::CANCEL_IO): // Disconnect 처리 후 IO 걸린거 취소 한번 더
+				{
+					CancelIoEx((HANDLE)m_serverSock, NULL);
+					break;
+				}
+				default: // IO 실패인 경우 연결 종료 처리
+				{
+					disconnectSession();
+					break;
+				}
 			}
 
 		}
@@ -261,20 +291,21 @@ void CLanClient::RunIoThread()
 						break;
 
 					if (header.len > m_recvQ.GetEmptySize())
-						DisconnectSession();
+						disconnectSession();
 
 
 					CPacket* packet = CPacket::Alloc();
 					int ret_deq = m_recvQ.Dequeue(packet->GetBufferPtrLan(), header.len + sizeof(header));
 					packet->MoveWritePos(header.len);
-				
+					
+					// Net 서버면 Decode 추가
 
 
 					OnRecv(packet);
 
 					CPacket::Free(packet);
 				}
-				bool ret_recv = RecvPost();
+				bool ret_recv = recvPost();
 
 			}
 			else if (&m_sendOverlapped == overlapped) // send 결과 처리
@@ -293,13 +324,8 @@ void CLanClient::RunIoThread()
 				}
 
 				m_sentPacketCnt = 0;
-				m_sendFlag = false;
 
-
-				//tracer.trace(32, session, session->session_id);
-				if (m_sendQ.GetSize() > 0)
-					SendPost();
-
+				trySend();
 			}
 			else // send, recv 다 아님(다른 session의 overlapped 전달)
 			{
@@ -307,7 +333,7 @@ void CLanClient::RunIoThread()
 			}
 		}
 
-		UpdateIOCount();
+		updateIOCount();
 		OnWorkerThreadEnd();
 	}
 
@@ -332,11 +358,7 @@ bool CLanClient::SendPacket(CPacket* packet)
 
 			if (m_sendQ.Enqueue(packet))
 			{
-				if (InterlockedExchange((LONG*)&m_sendFlag, true) == false)
-				{
-					InterlockedIncrement((LONG*)&m_ioCount);
-					PostQueuedCompletionStatus(m_hcp, 0, (ULONG_PTR)&m_serverSock, (LPOVERLAPPED)1);
-				}
+				sendPend();
 				ret = true;
 			}
 			else
@@ -348,7 +370,7 @@ bool CLanClient::SendPacket(CPacket* packet)
 		}
 
 	}
-	UpdateIOCount();
+	updateIOCount();
 
 
 
@@ -357,7 +379,7 @@ bool CLanClient::SendPacket(CPacket* packet)
 }
 
 
-bool CLanClient::ConnectSession()
+bool CLanClient::connectSession()
 {
 	bool ret;
 
@@ -388,7 +410,6 @@ bool CLanClient::ConnectSession()
 
 		m_sendFlag = false;
 		m_sentPacketCnt = 0;
-		m_leaveFlag = false;
 		m_disconnect = false;
 
 		m_recvQ.ClearBuffer();
@@ -400,16 +421,16 @@ bool CLanClient::ConnectSession()
 
 		OnEnterServerJoin();
 
-		RecvPost();
+		recvPost();
 
-		UpdateIOCount();
+		updateIOCount();
 
 	}
 
 	return ret;
 }
 
-void CLanClient::DisconnectSession()
+void CLanClient::disconnectSession()
 {
 	if (m_disconnect == 0)
 	{
@@ -417,22 +438,23 @@ void CLanClient::DisconnectSession()
 #ifdef TRACE_SESSION
 			session->pending_tracer.trace(enDisconnect, session->sock, GetTickCount64());
 #endif
-			// pending cnt == 0 이면 cancel IO 
+			CancelIoEx((HANDLE)m_serverSock, NULL);
+			InterlockedIncrement((LONG*)&m_ioCount);
+			PostQueuedCompletionStatus(m_hcp, 0, (ULONG_PTR)&m_serverSock, (LPOVERLAPPED)ePost::CANCEL_IO);
 			
-			CancelIOPend();
+			
 
 		}
 	}
 	return;
 }
 
-bool CLanClient::RecvPost()
+bool CLanClient::recvPost()
 {
 	DWORD flags = 0;
 	bool ret = false;
 	DWORD error_code;
 
-	int temp_pend = InterlockedIncrement((LONG*)&m_pendCount);
 	if (m_disconnect == 0)
 	{
 		InterlockedIncrement((LONG*)&m_ioCount);
@@ -463,8 +485,9 @@ bool CLanClient::RecvPost()
 			{ // 요청이 실패
 				if (error_code != WSAECONNRESET)
 					Log(L"SYS", enLOG_LEVEL_ERROR, L"Recv Failed [%d] session", error_code);
-				Leave();
-				int io_temp = UpdateIOCount();
+				
+				disconnectSession();
+				int io_temp = updateIOCount();
 			}
 			else
 			{
@@ -480,15 +503,14 @@ bool CLanClient::RecvPost()
 			ret = true;
 		}
 	}
-	UpdatePendCount();
+
 
 	return ret;
 }
 
-void CLanClient::SendPost()
+void CLanClient::sendPost()
 {
 
-	int temp_pend = InterlockedIncrement((LONG*)&m_pendCount);
 	if (m_disconnect == 0)
 	{
 
@@ -539,7 +561,9 @@ void CLanClient::SendPost()
 					{
 						if(error_code != WSAECONNRESET)
 							Log(L"SYS", enLOG_LEVEL_ERROR, L"Send Failed [%d] session", error_code);
-						int io_temp = UpdateIOCount();
+
+						disconnectSession();
+						int io_temp = updateIOCount();
 
 					}
 					else
@@ -556,19 +580,38 @@ void CLanClient::SendPost()
 			}
 		}
 	}
-	UpdatePendCount();
+
 
 
 	return;
 }
 
-int CLanClient::UpdateIOCount()
+void CLanClient::sendPend()
+{
+	if (InterlockedExchange((LONG*)&m_sendFlag, true) == false)
+	{
+		InterlockedIncrement((LONG*)&m_ioCount);
+		PostQueuedCompletionStatus(m_hcp, 0, (ULONG_PTR)&m_serverSock, (LPOVERLAPPED)ePost::SEND_PEND);
+	}
+}
+
+void CLanClient::trySend()
+{
+	m_sendFlag = false;
+	if (m_sendQ.GetSize() > 0)
+	{
+		sendPost();
+		sendPend();
+	}
+}
+
+int CLanClient::updateIOCount()
 {
 	int temp;
 	//tracer.trace(76, session, session->session_id);
 	if ((temp = InterlockedDecrement((LONG*)&m_ioCount)) == 0)
 	{
-		Release();
+		releasePend();
 	}
 	else if (temp < 0)
 	{
@@ -578,68 +621,21 @@ int CLanClient::UpdateIOCount()
 	return temp;
 }
 
-void CLanClient::UpdatePendCount()
+
+
+void CLanClient::releasePend()
 {
-	// disconnect 한번에 확인
-	int temp;
-	if ((temp = InterlockedDecrement((LONG*)&m_pendCount)) == 0)
-	{
-		CancelIOPend();
-	}
-
-	return;
-
-}
-
-void CLanClient::CancelIOPend()
-{
-	unsigned long long flag = *((unsigned long long*)(&m_pendCount));
-	if (flag == 0x100000000)
-	{
-		if (InterlockedCompareExchange64((LONG64*)&m_pendCount, 0x200000000, flag) == flag)
-		{
-#ifdef TRACE_SESSION
-			session->pending_tracer.trace(enCancelIO, session->sock, GetTickCount64());
-#endif
-			InterlockedIncrement((LONG*)&m_ioCount);
-			PostQueuedCompletionStatus(m_hcp, 0, (ULONG_PTR)&m_serverSock, &m_recvOverlapped);
-			CancelIoEx((HANDLE)m_serverSock, NULL);
-		}
-	}
-
-	return;
-}
-
-void CLanClient::Release()
-{
-
 	unsigned long long flag = *((unsigned long long*)(&m_ioCount));
+
 	if (flag == 0)
 	{
 		if (InterlockedCompareExchange64((LONG64*)&m_ioCount, 0x100000000, flag) == flag)
 		{
 
-			if (!m_leaveFlag) CrashDump::Crash(); // 삭제 처리 확인
-			
-			m_sessionId = 0;
 
-
-			CPacket* packet;
-			while (m_sendQ.Dequeue(&packet))
-			{
-				packet->SubRef();
-			}
-
-			int remain = m_sentPacketCnt;
-			while (remain > 0)
-			{
-				m_sentPacket[--remain]->SubRef();
-			}
-
-			closesocket(m_serverSock);
-			m_serverSock = INVALID_SOCKET;
-
-			ReleaseClient();
+			// PostQueue 
+			InterlockedIncrement((LONG*)&m_ioCount);
+			PostQueuedCompletionStatus(m_hcp, 0, (ULONG_PTR)&m_serverSock, (LPOVERLAPPED)ePost::RELEASE_PEND);
 
 		}
 	}
@@ -647,24 +643,35 @@ void CLanClient::Release()
 	return;
 }
 
-void CLanClient::Leave()
+
+void CLanClient::release()
 {
 
-	unsigned int flag = *((unsigned int*)(&m_leaveFlag));
-	if (flag == 0x0)
+	if (!m_disconnect) CrashDump::Crash(); // 삭제 처리 확인
+
+	OnLeaveServer();
+
+	m_sessionId = 0;
+
+
+	CPacket* packet;
+	while (m_sendQ.Dequeue(&packet))
 	{
-		if (InterlockedCompareExchange((LONG*)&m_leaveFlag, 0x1, flag) == flag)
-		{
-#ifdef TRACE_SESSION
-			session->pending_tracer.trace(enLeave, session->sock, GetTickCount64());
-#endif
-			OnLeaveServer();
-			
-		}
+		packet->SubRef();
 	}
+
+	int remain = m_sentPacketCnt;
+	while (remain > 0)
+	{
+		m_sentPacket[--remain]->SubRef();
+	}
+
+	closesocket(m_serverSock);
+	m_serverSock = INVALID_SOCKET;
 
 	return;
 }
+
 
 
 void CLanClient::Show()

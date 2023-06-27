@@ -173,7 +173,6 @@
   <ItemGroup>
     <ClInclude Include="BufferAllocator.h" />
     <ClInclude Include="CCpuUsage.h" />
-    <ClInclude Include="ChatProtocol.h" />
     <ClInclude Include="ChatServer.h" />
     <ClInclude Include="CLanClient.h" />
     <ClInclude Include="CLog.h" />

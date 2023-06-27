@@ -535,14 +535,10 @@ void CNetServer::runIoThread()
 			{
 				InterlockedAdd(&m_sendByte, cbTransferred);
 				
-				unsigned long long local_maxTransferred = m_maxTransferred;
-				if (local_maxTransferred < cbTransferred)
-					InterlockedCompareExchange(&m_maxTransferred, cbTransferred, local_maxTransferred);
-
 				InterlockedAdd(&m_sendPacket, session->sendPacket);
 				session->sendPacket = 0;
 
-				session->send_buffer.MoveFront(cbTransferred);
+		
 
 #ifdef TRACE_SESSION
 				session->pending_tracer.trace(enSendResult, cbTransferred, session->GetSessionID());
@@ -550,7 +546,7 @@ void CNetServer::runIoThread()
 				OnSend(*(unsigned long long*) & session->session_id, cbTransferred);
 				
 
-
+				session->send_buffer.MoveFront(cbTransferred);
 
 
 #ifdef AUTO_PACKET				
@@ -577,6 +573,7 @@ void CNetServer::runIoThread()
 
 
 #endif
+			
 				trySend(session);
 
 			}
