@@ -62,8 +62,9 @@ ChatServer::~ChatServer()
 
 bool ChatServer::Start()
 {
-	for (int i = 0; i < dfUSER_MAP_HASH; i++)
-		InitializeSRWLock(&m_userMapCS[i]);
+
+
+	InitializeSRWLock(&m_userMapSRW);
 
 	InitSector();
 
@@ -279,18 +280,17 @@ bool ChatServer::AcquireUser(SS_ID s_id, User** user)
 {
 	bool ret = true;
 
-	unsigned int idx = s_id % dfUSER_MAP_HASH;
 
-	AcquireSRWLockShared(&m_userMapCS[idx]);
-	auto iter = m_userMap[idx].find(s_id);
-	if (iter == m_userMap[idx].end())
+	AcquireSRWLockShared(&m_userMapSRW);
+	auto iter = m_userMap.find(s_id);
+	if (iter == m_userMap.end())
 		CrashDump::Crash(); // 발생하면 결함
 	else 
 	{
 		*user = iter->second;
 		(*user)->Lock();
 	}
-	ReleaseSRWLockShared(&m_userMapCS[idx]);
+	ReleaseSRWLockShared(&m_userMapSRW);
 
 
 	return ret;
@@ -321,12 +321,12 @@ void ChatServer::CreateUser(SS_ID s_id)
 	m_chatTracer.trace(1, (PVOID)user->session_id, GetTickCount64());
 #endif
 	// 추가
-	AcquireSRWLockExclusive(&m_userMapCS[idx]);
-	if (m_userMap[idx].find(s_id) != m_userMap[idx].end())
+	AcquireSRWLockExclusive(&m_userMapSRW);
+	if (m_userMap.find(s_id) != m_userMap.end())
 		CrashDump::Crash();
 
-	m_userMap[idx][s_id] = user;
-	ReleaseSRWLockExclusive(&m_userMapCS[idx]);
+	m_userMap[s_id] = user;
+	ReleaseSRWLockExclusive(&m_userMapSRW);
 
 	user->Unlock();
 
@@ -343,15 +343,15 @@ void ChatServer::DeleteUser(SS_ID s_id)
 #ifdef dfTRACE_CHAT
 	m_chatTracer.trace(2, (PVOID)s_id, GetTickCount64());
 #endif
-	AcquireSRWLockExclusive(&m_userMapCS[idx]);
-	auto iter = m_userMap[idx].find(s_id);
-	if (iter == m_userMap[idx].end())
+	AcquireSRWLockExclusive(&m_userMapSRW);
+	auto iter = m_userMap.find(s_id);
+	if (iter == m_userMap.end())
 		CrashDump::Crash();
 	user = iter->second;
 	user->Lock();
 
-	m_userMap[idx].erase(s_id);
-	ReleaseSRWLockExclusive(&m_userMapCS[idx]);
+	m_userMap.erase(s_id);
+	ReleaseSRWLockExclusive(&m_userMapSRW);
 
 	
 	assert(user->GetSSID() == s_id);
@@ -437,12 +437,7 @@ void ChatServer::Show()
 {
 	CNetServer::Show();
 
-	int user_cnt = 0;
-
-	for (int i = 0; i < dfUSER_MAP_HASH; i++)
-	{
-		user_cnt += m_userMap[i].size();
-	}
+	int user_cnt = m_userMap.size();
 
 	
 	wprintf(L"Connect : %d\n"

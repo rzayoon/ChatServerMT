@@ -55,6 +55,8 @@ bool CNetServer::Start(const wchar_t* ip, unsigned short port,
 		return false;
 	}
 
+	CLog::SYSLOG_Init(L"Log", enLOG_LEVEL_DEBUG);
+
 	m_nagle = nagle;
 
 	m_maxSession = maxSession;
@@ -432,7 +434,24 @@ void CNetServer::runIoThread()
 				break;
 			}
 		}
+		if (session == nullptr) // session과 무관한 비동기 요청
+		{
+			switch (reinterpret_cast<unsigned short>(overlapped))
+			{
+			case static_cast<unsigned short>(ePost::LOG_PEND):
+			{
+				writeLog();
+				break;
+			}
+			default:
+			{
+				Log(L"SYS", enLOG_LEVEL_ERROR, L"fault Post Queue %ld", overlapped);
+				break;
+			}
+			}
 
+			continue;
+		}
 
 
 		if (cbTransferred == 0 || session->disconnect) // IO 실패 혹은 PostQueue 비동기 요청
@@ -456,6 +475,13 @@ void CNetServer::runIoThread()
 			case static_cast<unsigned short>(ePost::CANCEL_IO): // Disconnect 처리 후 IO 걸린거 취소 한번 더
 			{
 				CancelIoEx((HANDLE)session->sock, NULL);
+				break;
+			}
+			case static_cast<unsigned short>(ePost::CUSTOM_EVENT_PEND): // DB 저장 등.. session release 전에 처리되야 하는 작업들
+			{
+				/* Todo: Session 내 Queue로 식별자 전달받기. 
+				   가상함수 구현으로 처리할 내용 사용자에게 맡기기. */
+
 				break;
 			}
 			default: // IO 실패인 경우 연결 종료 처리
@@ -483,15 +509,17 @@ void CNetServer::runIoThread()
 					if (session->recv_buffer.Peek((char*)&header, sizeof(header)) != sizeof(header))
 						break;
 
-					int q_size = session->recv_buffer.GetFillSize();
-					if (header.len + sizeof(header) > q_size)
-						break;
-
-					if (header.len == 0 || header.len > session->recv_buffer.GetEmptySize()) {
+					if (header.len == 0 || header.len > session->recv_buffer.GetBufferSize())
+					{
 						Log(L"SYS", enLOG_LEVEL_DEBUG, L"Packet Error header indicates length [%d]", header.len);
 						disconnect(session);
 						break;
 					}
+
+					int q_size = session->recv_buffer.GetFillSize();
+					if (header.len + sizeof(header) > q_size)
+						break;
+
 
 #ifdef AUTO_PACKET
 					PacketPtr packet = CPacket::Alloc();
@@ -720,6 +748,41 @@ void CNetServer::DisconnectSession(unsigned long long session_id)
 	return;
 }
 
+
+
+void CNetServer::Log(const wchar_t* szType, en_LOG_LEVEL logLevel, const wchar_t* szStringFormat, ...)
+{
+	CLog* log = CLog::Alloc();
+	bool ret = false;
+
+	va_list va;
+	va_start(va, szStringFormat);
+	ret = log->Write(szType, logLevel, szStringFormat, va);
+	va_end(va);
+
+	if (ret)
+	{
+		m_logQueue.Enqueue(log);
+		PostQueuedCompletionStatus(m_hcp, 0, 0, reinterpret_cast<LPOVERLAPPED>(ePost::LOG_PEND));
+	}
+
+	return;
+}
+
+void CNetServer::LogHex(const wchar_t* szType, en_LOG_LEVEL logLevel, const wchar_t* szLog, BYTE* pByte, int iByteLen)
+{
+	CLog* log = CLog::Alloc();
+	bool ret = false;
+	ret = log->WriteHex(szType, logLevel, szLog, pByte, iByteLen);
+	if (ret)
+	{
+		m_logQueue.Enqueue(log);
+		PostQueuedCompletionStatus(m_hcp, 0, 0, reinterpret_cast<LPOVERLAPPED>(ePost::LOG_PEND));
+	}
+
+
+	return;
+}
 void CNetServer::disconnect(Session* session)
 {
 
@@ -1101,4 +1164,19 @@ void CNetServer::runTimeoutThread()
 	}
 
 	return;
+}
+
+
+void CNetServer::writeLog()
+{
+	CLog* log = nullptr;
+
+	while (log == nullptr)
+	{
+		m_logQueue.Dequeue(&log); // Enqueue 때문에 실패할 수 있음 
+
+	}
+
+	log->WriteFile();
+	CLog::Free(log);
 }

@@ -244,7 +244,24 @@ void CLanClient::runIoThread()
 
 		}
 
+		if (cbTransferred == 0 && key == nullptr) // session과 무관한 비동기 요청
+		{
+			switch (reinterpret_cast<unsigned short>(overlapped))
+			{
+			case static_cast<unsigned short>(ePost::LOG_PEND):
+			{
+				writeLog();
+				break;
+			}
+			default:
+			{
+				Log(L"SYS", enLOG_LEVEL_ERROR, L"fault Post Queue %ld", overlapped);
+				break;
+			}
+			}
 
+			continue;
+		}
 
 		if (cbTransferred == 0 || m_disconnect) // Pending 후 I/O 처리 실패 또는 PostQueue
 		{
@@ -681,4 +698,52 @@ void CLanClient::Show()
 
 
 	return;
+}
+
+void CLanClient::Log(const wchar_t* szType, en_LOG_LEVEL logLevel, const wchar_t* szStringFormat, ...)
+{
+	CLog* log = CLog::Alloc();
+	bool ret = false;
+
+	va_list va;
+	va_start(va, szStringFormat);
+	ret = log->Write(szType, logLevel, szStringFormat, va);
+	va_end(va);
+
+	if (ret)
+	{
+		m_logQueue.Enqueue(log);
+		PostQueuedCompletionStatus(m_hcp, 0, 0, reinterpret_cast<LPOVERLAPPED>(ePost::LOG_PEND));
+	}
+
+	return;
+}
+
+void CLanClient::LogHex(const wchar_t* szType, en_LOG_LEVEL logLevel, const wchar_t* szLog, BYTE* pByte, int iByteLen)
+{
+	CLog* log = CLog::Alloc();
+	bool ret = false;
+	ret = log->WriteHex(szType, logLevel, szLog, pByte, iByteLen);
+	if (ret)
+	{
+		m_logQueue.Enqueue(log);
+		PostQueuedCompletionStatus(m_hcp, 0, 0, reinterpret_cast<LPOVERLAPPED>(ePost::LOG_PEND));
+	}
+
+
+	return;
+}
+
+void CLanClient::writeLog()
+{
+	CLog* log = nullptr;
+
+	while (log == nullptr)
+	{
+		m_logQueue.Dequeue(&log); // Enqueue 때문에 실패할 수 있음 
+
+	}
+
+	log->WriteFile();
+	CLog::Free(log);
 }

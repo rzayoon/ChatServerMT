@@ -35,6 +35,11 @@ public:
 		return bufSize - fillSize - 1;
 	}
 
+	int GetBufferSize()
+	{
+		return bufSize - 1;
+	}
+
 	/// <summary>
 	/// ring buffer array에 한 번에 넣을 수 있는 사이즈
 	/// </summary>

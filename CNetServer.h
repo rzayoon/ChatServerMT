@@ -7,7 +7,8 @@
 //#include "session.h"
 //#include "Tracer.h"
 //#include "CrashDump.h"
-
+#include <cstdarg>
+#include "CLog.h"
 #define SEND_ZEROCOPY
 #define SYNC_IO_MONITOR
 
@@ -26,15 +27,17 @@ class Session;
 class Tracer;
 template <class T>
 class LockFreeStack;
-
+class CLog;
 
 class CNetServer
 {
 
 	enum class ePost {
 		SEND_PEND = 1,
-		RELEASE_PEND = 2,
-		CANCEL_IO = 3
+		RELEASE_PEND,
+		CANCEL_IO,
+		LOG_PEND,
+		CUSTOM_EVENT_PEND
 	};
 
 public:
@@ -72,6 +75,12 @@ public:
 	void DisconnectSession(unsigned long long session_id);
 	
 
+	void Log(const wchar_t* szType, en_LOG_LEVEL logLevel, const wchar_t* szStringFormat, ...);
+	void LogHex(const wchar_t* szType, en_LOG_LEVEL logLevel, const wchar_t* szLog, BYTE* pByte, int iByteLen);
+
+
+	void SetCustomEvent(unsigned long long sessionID
+	);
 
 #ifdef AUTO_PACKET
 	bool SendPacket(unsigned long long session_id, PacketPtr packet);
@@ -183,6 +192,8 @@ private:
 
 	void trySend(Session* session);
 	
+	void writeLog();
+
 	void disconnect(Session* session);
 	int updateIOCount(Session* session);
 	void releasePend(Session* session);
@@ -191,7 +202,7 @@ private:
 	bool m_isRunning;
 
 	LockFreeStack<unsigned short>* m_emptySessionStack;
-
+	LockFreeQueue<CLog*> m_logQueue;
 	Session* m_sessionArr;
 	unsigned int m_sessID = 1;
 

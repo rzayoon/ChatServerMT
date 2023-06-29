@@ -3,8 +3,8 @@
 #/*include <stdlib.h>
 #include <stdio.h>
 
-#include "LockFreeQueue.h"
-#include "LockFreeStack.h"*/
+#include "LockFreeQueue.h"*/
+#include "LockFreeStack.h"
 
 #pragma warning(push)
 #pragma warning(disable: 6011)

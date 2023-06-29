@@ -54,7 +54,7 @@ int main()
 {
 
 	timeBeginPeriod(1);
-	SYSLOG_Init(L"Log", enLOG_LEVEL_DEBUG);
+	
 	
 	ChatServer* server = new ChatServer;
 

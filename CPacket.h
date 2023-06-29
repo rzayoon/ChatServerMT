@@ -159,7 +159,7 @@ public:
 	/// <summary>
 	/// Packet을 다른 스레드로 넘길 경우 현재 스레드에서 정리하기 전에 호출한다.
 	/// </summary>
-	inline void AddRef()
+	void AddRef()
 	{
 		InterlockedIncrement((LONG*)&ref_cnt);
 		return;
@@ -169,7 +169,7 @@ public:
 	/// subref 이후에는 바로 다른 스레드에서 사용할 여지가 있으므로 
 	/// 건드리지 않는다.
 	/// </summary>
-	inline void SubRef()
+	void SubRef()
 	{
 		int temp_cnt = InterlockedDecrement((LONG*)&ref_cnt);
 		if (temp_cnt == 0)

@@ -87,7 +87,7 @@ bool PacketProcessor::ProcLogin(User* user, CPacket* packet)
 			InterlockedIncrement(&m_server->m_duplicateLogin);
 			CrashDump::Crash();
 			// 임계영역에서 로그 남기는거 지양해야함
-			Log(L"Chat", enLOG_LEVEL_ERROR, L"Duplicated Login [%lld]", account_no);
+			m_server->Log(L"Chat", enLOG_LEVEL_ERROR, L"Duplicated Login [%lld]", account_no);
 			m_server->DisconnectSession(iter->second);
 			ret = false;
 		}

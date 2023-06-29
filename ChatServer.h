@@ -7,7 +7,7 @@
 #include "MemoryPoolTls.h"
 
 
-#include <unordered_map>
+#include <map>
 #include <Windows.h>
 
 #define dfUSER_MAP_HASH 1
@@ -59,8 +59,8 @@ private:
 
 	MemoryPoolTls<User> m_userPool;
 
-	std::unordered_map<SS_ID, User*> m_userMap[dfUSER_MAP_HASH];
-	SRWLOCK m_userMapCS[dfUSER_MAP_HASH];
+	std::map<SS_ID, User*> m_userMap;
+	SRWLOCK m_userMapSRW;
 	
 	std::unordered_map<long long, SS_ID> m_accountMap;
 	SRWLOCK m_accountMapSRW;

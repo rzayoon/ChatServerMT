@@ -6,6 +6,8 @@
 //#include "RingBuffer.h"
 //#include "CPacket.h"
 //#include "Tracer.h"
+#include <stdarg.h>
+#include "CLog.h"
 
 #define SEND_ZEROCOPY
 
@@ -29,8 +31,9 @@ class CLanClient
 
 	enum class ePost {
 		SEND_PEND = 1,
-		RELEASE_PEND = 2,
-		CANCEL_IO = 3
+		RELEASE_PEND,
+		CANCEL_IO,
+		LOG_PEND
 	};
 
 
@@ -47,6 +50,9 @@ public:
 	void Disconnect();
 	bool SendPacket(CPacket* packet);
 	void Show();
+
+	void Log(const wchar_t* szType, en_LOG_LEVEL logLevel, const wchar_t* szStringFormat, ...);
+	void LogHex(const wchar_t* szType, en_LOG_LEVEL logLevel, const wchar_t* szLog, BYTE* pByte, int iByteLen);
 
 	virtual void OnRecv(CPacket* packet) = 0;
 	virtual void OnEnterServerJoin() = 0;
@@ -121,6 +127,10 @@ private:
 
 	void releasePend();
 	void release();
+
+	void writeLog();
+
+	LockFreeQueue<CLog*> m_logQueue;
 
 
 	SOCKET m_serverSock;
