@@ -719,7 +719,7 @@ void CNetServer::trySend(Session* session)
 	if (session->send_q.GetSize() > 0)
 	{
 		sendPost(session);
-		sendPend(session);
+		
 	}
 
 }
@@ -884,6 +884,7 @@ void CNetServer::sendPost(Session* session)
 			if (buf_cnt <= 0)
 			{
 				session->send_post_flag = false;
+				sendPend(session);
 			}
 			else
 			{

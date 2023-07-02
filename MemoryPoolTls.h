@@ -191,40 +191,34 @@ public:
 		}
 
 
-		BLOCK_NODE* chunk_top;
+		BLOCK_NODE* chunk_top = nullptr;
 		// 할당
-		POOL* td_pool = td->pool;
+		POOL* td_stack = td->chunk; // 스택2 우선 사용
 		DATA* ret;
-		if (td_pool->size == 0) // 풀 다 쓴 경우
+		if (td_stack->size == 0) // 스택2 빈 경우
 		{
-			POOL* td_chunk = td->chunk;
-			if (td_chunk->size != 0) // 스레드에서 모은거 사용
+			td_stack = td->pool; // 스택 1 사용
+			if (td_stack->size == 0) // 스택 1 빈 경우
 			{
-				td_pool->top = td_chunk->top;
-				td_pool->size = td_chunk->size;
-				td_chunk->top = nullptr;
-				td_chunk->size = 0;
+				if (chunk_pool.Pop(&chunk_top)) // 메인 풀 사용
+				{
+					td_stack->top = chunk_top;
+					td_stack->size = default_size;
+				}
+				else
+				{
+					GeneratePool(td_stack); // 생성
+				}
 			}
-			else if (chunk_pool.Pop(&chunk_top))
-			{ // 가용 청크 가져옴
-				
-				td_pool->top = chunk_top;
-				td_pool->size = default_size;
 
-			}
-			else // 모아둔 청크도 없음.
-			{
-				GeneratePool(td_pool); // 생성
-			}
 		}
-		ret = td_pool->Alloc();
+		ret = td_stack->Alloc();
 		
 		if (placement_new)
 			new(ret) DATA;
 
-		InterlockedIncrement((LONG*)&use_size);
+		InterlockedIncrement((LONG*)&use_size); 
 		
-
 		return ret;
 	}
 
@@ -241,28 +235,24 @@ public:
 			TlsSetValue(tls_index, (LPVOID)td);
 		}
 		int size = default_size;
-		POOL* td_pool = td->pool;
-		POOL* td_chunk = td->chunk;
-
+		POOL* td_stack = td->pool;
+	
 		if (placement_new)
 			data->~DATA();
 
-		if (td_pool->size == size) //풀 초과분
+		if (td_stack->size == size) // 스택 1 Full
 		{
-
-			if (td_chunk->size == size) //청크도 꽉참
+			td_stack = td->chunk;
+			if (td_stack->size == size) // 스택 2 Full
 			{
-				chunk_pool.Push(td_chunk->top);
-				td_chunk->Clear();	
+				chunk_pool.Push(td_stack->top);
+				td_stack->Clear();
 			}
-
-			td_chunk->Free(data);
+			
 		}
-		else
-		{
-			td_pool->Free(data);
-		}
-
+	
+		td_stack->Free(data);
+		
 		InterlockedDecrement((LONG*)&use_size);
 
 		return true;
@@ -291,7 +281,6 @@ private:
 		InterlockedAdd((LONG*)&alloc_size, default_size);
 		_pool->Generate(default_size);
 	}
-
 
 	LockFreeStack<BLOCK_NODE*> chunk_pool = LockFreeStack<BLOCK_NODE*>(0);
 
